@@ -16,3 +16,7 @@ Cada punt d'aquesta llista es corregeix després, un per un, amb el seu test, pe
 | 9 | Documentació | L'inventari diu que l'ACWR és "setmana actual sobre la mitjana de 4 setmanes", però la v1 fa servir mitjanes exponencials (Williams), que és millor. | inventari | Corregir el text. |
 
 Els punts 1 i 2 són els que canvien més el que veus. Els altres són detalls.
+
+## Minuts en Z4–Z5 al resum de la sessió
+
+`sessionSummary` divideix `tiz[3] + tiz[4]` per 60, però `tiz` ja és en minuts. Una sessió amb 12 min a Z4–Z5 dona `Math.round(0,2) = 0` i la frase «Uns X min en Z4-Z5» no surt mai. La v2 fa servir els minuts directament (`js/engine/activity.js`).

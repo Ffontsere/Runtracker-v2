@@ -3,7 +3,8 @@
 // Fa dues coses:
 //  1. Strava: la clau secreta i el refresh token viuen aquí. L'app només rep tokens d'accés (6 h).
 //     La connexió torna al Worker, no a l'app, així funciona també des de l'app instal·lada.
-//  2. Còpia de força, cos i configuració, perquè no depenguin d'un sol mòbil.
+//  2. Còpia de força, cos, configuració i notes de les sortides (RPE, sensacions, cursa, temperatura),
+//     perquè no depenguin d'un sol mòbil.
 //
 // Variables (wrangler.toml i secrets):
 //   STRAVA_CLIENT_ID      id públic de l'app de Strava
@@ -14,7 +15,7 @@
 
 const P = "runtracker:";
 const K = { tokens: P + "strava:tokens", state: s => P + "strava:state:" + s, sync: c => P + "sync:" + c };
-export const SYNC_COLLECTIONS = ["strength", "body", "strengthState", "settings"];
+export const SYNC_COLLECTIONS = ["strength", "body", "strengthState", "settings", "actNotes"];
 const STRAVA_AUTH = "https://www.strava.com/oauth/authorize";
 const STRAVA_TOKEN = "https://www.strava.com/oauth/token";
 

@@ -8,6 +8,7 @@ import { readV1Storage, readV1Backup, migrate, saveMigration } from "../data/mig
 import { recalcAll } from "../data/recalc.js";
 import { strengthDays, DOW_NAMES } from "../engine/schedule.js";
 import { syncAll, syncSoon } from "../data/sync.js";
+import { applyNotes } from "../data/notes.js";
 
 /**
  * @param {HTMLElement} root
@@ -110,6 +111,7 @@ export async function renderProfile(root, app) {
     bkStatus.textContent = !b ? "Encara no" : b.ok ? "Al dia" : "Amb errors";
     bkText.textContent = `${n} ${n === 1 ? "sessió" : "sessions"} de força i ${m} ${m === 1 ? "mesura" : "mesures"} al mòbil. ` + (b ? `Última còpia: ${fmtAgo(b.at, now())}.` : "");
     if (b && !b.ok) say(bkMsg, b.errors.join(" · "), "bad");
+    else if (b && b.pending && b.pending.length) say(bkMsg, "Les notes de les sortides (RPE, sensacions, cursa) encara no es copien: cal tornar a publicar el Worker.", "warn");
   }
   bkBtn.onclick = async () => {
     busy(bkBtn, true, "Copiant…"); say(bkMsg, "");
@@ -255,6 +257,7 @@ export async function renderProfile(root, app) {
     say(dataMsg, "Baixant sortides de Strava…");
     try {
       const r = await syncActivities({ db, worker: client(), fetchImpl, now: now() });
+      await applyNotes(db); // les notes (RPE, cursa…) que hi hagi a la còpia per a les sortides noves
       await setSyncState(db, { lastSync: now(), lastResult: r });
       say(dataMsg, r.added ? `${r.added === 1 ? "1 sortida nova" : fmtInt(r.added) + " sortides noves"}.` : "Ja ho tenies tot.", "ok");
     } catch (e) {

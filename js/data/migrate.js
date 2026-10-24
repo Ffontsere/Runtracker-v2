@@ -106,6 +106,7 @@ export async function saveMigration(db, result, now) {
       { key: "settings", value: result.settings, updatedAt: now },
       { key: "tempCache", value: result.tempCache, updatedAt: now },
       { key: "migration", value: { from: result.report.source, at: now, count: result.acts.length, sv: SV }, updatedAt: now },
+      { key: "notesSeeded", value: false, updatedAt: now }, // les notes de la v1 (RPE, cursa…) entraran a la còpia
     ],
   });
 }

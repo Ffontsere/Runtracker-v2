@@ -3,10 +3,12 @@
 // - Llistes (sessions, mesures): es combinen per id; guanya el registre amb `updatedAt` més recent.
 //   Un registre esborrat es queda com a { id, deleted:true, updatedAt } perquè l'esborrat també viatgi.
 // - Valors (estat de força, configuració): guanya el més recent.
+// - Notes de les sortides (RPE, sensacions, cursa, temperatura): llista per id, com les sessions.
 // Les sortides no es copien: Strava ja les guarda.
 
 import { workerClient, SyncError } from "./strava.js";
 import { getWorkerConfig } from "./config.js";
+import { applyNotes, seedNotesFromActivities } from "./notes.js";
 
 /** Camps de configuració que viatgen entre mòbils. La ubicació, el Worker i la FC es queden a cada mòbil. */
 export const PORTABLE_SETTINGS = ["strengthDays", "weight", "height", "weeklyTarget", "yearlyGoal", "sex", "birth", "name"];
@@ -46,6 +48,11 @@ const LOCAL = {
     merge: newer,
     write: (db, v) => db.put("kv", { key: "strengthState", value: v.value, updatedAt: v.at }),
   },
+  actNotes: {
+    read: async db => (await db.getKV("actNotes")) || [],
+    merge: mergeLists,
+    write: async (db, v) => { await db.setKV("actNotes", v); await applyNotes(db); },
+  },
   settings: {
     read: async db => {
       const r = await db.get("kv", "settings");
@@ -72,7 +79,8 @@ export async function syncAll(db, { fetchImpl = fetch, now = Date.now(), worker 
     if (!cfg.appKey) return { ok: false, skipped: true, pulled: [], pushed: [], errors: ["Falta la clau de l'app."], at: now };
     worker = workerClient({ url: cfg.url, appKey: cfg.appKey, fetchImpl });
   }
-  const out = { ok: true, pulled: [], pushed: [], errors: [], at: now };
+  const out = { ok: true, pulled: [], pushed: [], errors: [], pending: [], at: now };
+  await seedNotesFromActivities(db, now);
   for (const col of COLLECTIONS) {
     const L = LOCAL[col];
     try {
@@ -89,13 +97,15 @@ export async function syncAll(db, { fetchImpl = fetch, now = Date.now(), worker 
         throw new SyncError("worker", r.body.message || "Error " + r.status);
       }
     } catch (e) {
+      // Un Worker que encara no coneix aquesta col·lecció (cal tornar-lo a publicar): no és un error de l'app.
+      if (/Col·lecció desconeguda/.test(e.message)) { out.pending.push(col); continue; }
       out.ok = false;
       out.errors.push(`${col}: ${e.message}`);
       if (e.code === "app_key" || e.code === "network") break; // no cal provar la resta
     }
   }
   out.pulled = [...new Set(out.pulled)];
-  await db.setKV("backup", { at: now, ok: out.ok, errors: out.errors, pushed: out.pushed, pulled: out.pulled });
+  await db.setKV("backup", { at: now, ok: out.ok, errors: out.errors, pushed: out.pushed, pulled: out.pulled, pending: out.pending });
   return out;
 }
 

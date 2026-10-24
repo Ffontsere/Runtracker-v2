@@ -160,3 +160,32 @@ export async function pruneStreams(db, max = STREAM_CACHE_MAX) {
   for (const s of old) await db.delete("streams", s.id);
   return old.length;
 }
+
+/**
+ * Streams d'una sola sortida (per al Detall): els de la base de dades, o els baixa de Strava,
+ * recalcula les mètriques i els desa. Retorna { streams, act } o llança un SyncError.
+ */
+export async function activityStreams({ db, worker, fetchImpl = fetch, act, now = Date.now() }) {
+  let streams = await db.get("streams", act.id);
+  if (!streams) {
+    if (act.source !== "strava") return { streams: null, act };
+    const tok = await worker.token();
+    const sid = act.id.replace("strava-", "");
+    let r;
+    try { r = await fetchImpl(`${API}/activities/${sid}/streams?keys=${STREAM_KEYS}&key_by_type=true&resolution=medium`, { headers: { Authorization: "Bearer " + tok.access_token } }); }
+    catch (e) { throw new SyncError("network", "Sense connexió amb Strava: " + e.message); }
+    if (r.status === 429) throw new SyncError("quota", "Límit de peticions de Strava assolit. Torna-ho a provar d'aquí 15 minuts.");
+    if (r.status === 404) throw new SyncError("strava", "Strava no té dades segon a segon d'aquesta sortida.");
+    if (!r.ok) throw new SyncError("strava", "Strava ha respost " + r.status + ".");
+    streams = { id: act.id, ...(await r.json()), _ts: now };
+    await db.put("streams", streams);
+  }
+  if (act.sv === SV) return { streams, act };
+  const settings = await db.getKV("settings");
+  const acts = await db.getAll("activities");
+  const bounds = activeZoneBounds({ acts, settings, now, streamCache: {} });
+  const updated = { ...act, ...deriveFromStreams(act, streams, settings, bounds) };
+  Object.assign(updated, vo2ForActivity(updated, settings, (await db.getKV("tempCache")) || {}));
+  await db.put("activities", updated);
+  return { streams, act: updated };
+}
