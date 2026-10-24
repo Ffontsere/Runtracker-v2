@@ -6,6 +6,7 @@ import { renderProfile } from "./ui/profile.js";
 import { renderToday } from "./ui/today.js";
 import { renderStrength } from "./ui/strength.js";
 import { h, fmtInt } from "./ui/dom.js";
+import { syncAll } from "./data/sync.js";
 
 export const ROUTES = {
   avui: { title: "Avui", note: "Estat de forma, càrrega i què toca avui." },
@@ -39,7 +40,8 @@ export async function start({ win = window, db = null, fetchImpl, now, sleep, ge
     root.replaceChildren(h("section.card", h("h2", "No es poden guardar dades"), h("p.msg.bad", e.message)));
     throw e;
   }
-  if (!(await db.getKV("settings"))) await db.setKV("settings", { ...DEFAULT_SETTINGS });
+  // updatedAt 0: en un mòbil nou, la configuració de la còpia guanya a la per defecte.
+  if (!(await db.getKV("settings"))) await db.put("kv", { key: "settings", value: { ...DEFAULT_SETTINGS }, updatedAt: 0 });
 
   // Retorn del Worker després de connectar Strava: #strava=ok → Perfil amb l'avís.
   let notice = parseStravaReturn(win.location.hash);
@@ -64,7 +66,9 @@ export async function start({ win = window, db = null, fetchImpl, now, sleep, ge
   }
   win.addEventListener("hashchange", () => { show().catch(e => console.error(e)); });
   const first = show();
-  return { db, ready: first, route: () => current };
+  // Còpia en segon pla en obrir l'app. Si falla, el Perfil ho diu.
+  const backup = first.then(() => syncAll(db, { fetchImpl: fetchImpl || ((...a) => fetch(...a)) })).catch(e => ({ ok: false, errors: [e.message] }));
+  return { db, ready: first, backup, route: () => current };
 }
 
 if (typeof window !== "undefined" && !window.__RT_TEST__) {

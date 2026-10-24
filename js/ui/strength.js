@@ -6,6 +6,7 @@ import { strengthContext, nextSession, DOW_NAMES } from "../engine/schedule.js";
 import { dateStr } from "../engine/dates.js";
 import { loadStrength, saveDraft, draftFor, finishSession, setLevel } from "../data/strength.js";
 import { getSettings } from "../data/config.js";
+import { syncSoon } from "../data/sync.js";
 
 const dec = (n, d = 2) => n == null ? "—" : n.toLocaleString("ca-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
 const shortDate = ds => { const [, m, d] = ds.split("-"); return `${+d}/${+m}`; };
@@ -158,6 +159,7 @@ export async function renderStrength(root, app) {
         const r = await finishSession(db, { type, state, ctx, draft, minutes: minIn.value, rpe: rpeIn.value, date: today, now: Date.now() });
         state = r.state; sessions = [r.session, ...sessions]; draft = {}; lastSaved = r.session; app.chosen = null;
         next = nextSession(sessions, settings, now); type = next.type;
+        if (!app.noSync) syncSoon(db);
         minIn.value = ""; rpeIn.value = "";
         paint(); try { window.scrollTo(0, 0); } catch { /* sense scroll */ }
       } catch (e) { say(finishMsg, e.message, "bad"); btn.disabled = false; }
@@ -189,7 +191,7 @@ export async function renderStrength(root, app) {
           ...PATTERNS.map(p => {
             const lad = LADDERS[p];
             const sel = h("select.input", { id: `lvl-${p}`, onchange: async e => {
-              try { state = await setLevel(db, state, p, +e.target.value); say(msg, `${lad.name}: nivell ${+e.target.value + 1}.`, "ok"); stopTimer(); paint(); root.querySelector("#levels").open = true; }
+              try { state = await setLevel(db, state, p, +e.target.value); if (!app.noSync) syncSoon(db); say(msg, `${lad.name}: nivell ${+e.target.value + 1}.`, "ok"); stopTimer(); paint(); root.querySelector("#levels").open = true; }
               catch (err) { say(msg, "No s'ha pogut desar: " + err.message, "bad"); }
             } }, ...lad.levels.map((l, i) => h("option", { value: String(i), selected: i === state[p].level }, `${i + 1}. ${l.n}`)));
             return h("div.field", h("label", { for: `lvl-${p}` }, `${lad.name} `, h("span.muted", `· ${lad.muscles}`)), sel);

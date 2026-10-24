@@ -5,7 +5,7 @@ import { initState, withAllPatterns, planSession, applyResult, strengthLoad } fr
 
 export async function loadStrength(db) {
   const raw = await db.getKV("strengthState");
-  const sessions = (await db.getAll("strength")).sort((a, b) => b.date.localeCompare(a.date) || (b.savedAt || 0) - (a.savedAt || 0));
+  const sessions = (await db.getAll("strength")).filter(s => !s.deleted).sort((a, b) => b.date.localeCompare(a.date) || (b.savedAt || 0) - (a.savedAt || 0));
   return { state: raw ? withAllPatterns(raw) : initState(), sessions, draft: (await db.getKV("strengthDraft")) || {} };
 }
 
@@ -54,4 +54,8 @@ export async function setLevel(db, state, pattern, level) {
   return next;
 }
 
-export async function deleteSession(db, id) { await db.delete("strength", id); }
+/** Esborra una sessió deixant-ne la marca, perquè l'esborrat arribi també a la còpia. */
+export async function deleteSession(db, id, now = Date.now()) {
+  const s = await db.get("strength", id);
+  if (s) await db.put("strength", { id, date: s.date, deleted: true, updatedAt: now });
+}

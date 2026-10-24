@@ -7,6 +7,7 @@ import { workerClient, syncActivities, runBackfill, backfillQueue, SyncError } f
 import { readV1Storage, readV1Backup, migrate, saveMigration } from "../data/migrate.js";
 import { recalcAll } from "../data/recalc.js";
 import { strengthDays, DOW_NAMES } from "../engine/schedule.js";
+import { syncAll, syncSoon } from "../data/sync.js";
 
 /**
  * @param {HTMLElement} root
@@ -83,6 +84,7 @@ export async function renderProfile(root, app) {
         const cur = await getSettings(db);
         const next = { ...strengthDays(cur), [t]: +e.target.value };
         await db.setKV("settings", { ...cur, strengthDays: next });
+        if (!app.noSync) syncSoon(db, { fetchImpl });
         say(daysMsg, next.A === next.B ? "Les dues sessions cauen el mateix dia: millor separar-les almenys 48 h." : `Desat: A el ${DOW_NAMES[next.A]}, B el ${DOW_NAMES[next.B]}.`, next.A === next.B ? "warn" : "ok");
       } catch (err) { say(daysMsg, "No s'ha pogut desar: " + err.message, "bad"); }
     } }, ...ORDER.map(d => h("option", { value: String(d), selected: d === sd[t] }, DOW_NAMES[d].charAt(0).toUpperCase() + DOW_NAMES[d].slice(1)))));
@@ -91,6 +93,32 @@ export async function renderProfile(root, app) {
     h("p.small.muted", "L'Avui t'avisa quan toca. Si un dia no pots, la pestanya Força et proposa la sessió que fa més temps que no fas."),
     h("div.grid2", daySel("A", "Sessió A · Cames"), daySel("B", "Sessió B · Tronc i tendons")),
     daysMsg));
+
+  // ─────────────── Còpia ───────────────
+  const bkStatus = h("span.status", "—");
+  const bkText = h("p.small.muted");
+  const bkMsg = h("div.msg");
+  const bkBtn = h("button.btn", { type: "button" }, "Fes una còpia ara");
+  root.append(h("section.card", { "aria-labelledby": "h-backup" },
+    h("div.card-head", h("h2", { id: "h-backup" }, "Còpia de força i cos"), bkStatus),
+    h("p.small.muted", "Les sortides ja són a Strava. Les sessions de força, les mesures del cos i la configuració es copien soles al teu Worker cada vegada que obres l'app o deses alguna cosa. En un mòbil nou, posa la clau de l'app i ho recuperes tot."),
+    bkText, bkMsg, h("div.row", bkBtn)));
+  async function paintBackup() {
+    const b = await db.getKV("backup");
+    const [n, m] = [(await db.getAll("strength")).filter(x => !x.deleted).length, (await db.getAll("body")).filter(x => !x.deleted).length];
+    bkStatus.className = "status " + (!b ? "warn" : b.ok ? "ok" : "bad");
+    bkStatus.textContent = !b ? "Encara no" : b.ok ? "Al dia" : "Amb errors";
+    bkText.textContent = `${n} ${n === 1 ? "sessió" : "sessions"} de força i ${m} ${m === 1 ? "mesura" : "mesures"} al mòbil. ` + (b ? `Última còpia: ${fmtAgo(b.at, now())}.` : "");
+    if (b && !b.ok) say(bkMsg, b.errors.join(" · "), "bad");
+  }
+  bkBtn.onclick = async () => {
+    busy(bkBtn, true, "Copiant…"); say(bkMsg, "");
+    try {
+      const r = await syncAll(db, { fetchImpl, now: now() });
+      await paintBackup();
+      if (r.ok) say(bkMsg, r.pulled.length ? "Fet. S'han recuperat dades d'un altre mòbil." : "Fet.", "ok");
+    } finally { busy(bkBtn, false, "Fes una còpia ara"); }
+  };
 
   // ─────────────── Lògica ───────────────
   let cfg = await getWorkerConfig(db);
@@ -276,6 +304,7 @@ export async function renderProfile(root, app) {
       } else {
         await db.setKV("settings", { ...cur, weight, height, hrMax, hrRest });
         say(physMsg, "Desat.", "ok");
+        if (!app.noSync) syncSoon(db, { fetchImpl });
       }
     } catch (e) { say(physMsg, "No s'ha pogut desar: " + e.message, "bad"); }
     finally { busy(physBtn, false, "Desa"); }
@@ -283,6 +312,7 @@ export async function renderProfile(root, app) {
 
   // Retorn de Strava: l'avís mana per sobre del missatge de l'estat.
   await paintData();
+  await paintBackup();
   await checkStrava();
   if (app.notice) {
     if (app.notice.ok) say(stravaMsg, "Strava connectat.", "ok");

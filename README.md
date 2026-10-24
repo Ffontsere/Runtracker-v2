@@ -36,6 +36,7 @@ js/data/        emmagatzematge i sincronització
   strava.js       sincronització amb Strava i anàlisi dels streams en segon pla
   config.js       Worker, clau de l'app i estat de la sincronització
   strength.js     sessions de força, esborrany i nivells
+  sync.js         còpia de força, cos i configuració al Worker (combina per id, guanya el més recent)
   weather.js      previsió d'Open-Meteo amb cache d'1 hora
   recalc.js       recàlcul de totes les sortides quan canvia la FC
 worker/         Worker de Cloudflare ff-runtracker (token de Strava i còpia)
@@ -50,6 +51,7 @@ Cada funció rep `{ acts, settings, now, tempCache, streamCache }` en lloc de ll
 
 - FC màxima 176 i en repòs 45 (24/10/2026). La migració recalcula amb aquests valors el TRIMP, les zones i el VO₂ de totes les sortides.
 - El secret i el refresh token de Strava només són al Worker.
+- Força, cos i configuració (pes, alçada, dies de força, objectius) es copien soles al Worker en obrir l'app i en desar. La ubicació i la FC es queden a cada mòbil. Un esborrat es desa com a marca perquè arribi a la còpia.
 
 ## Proves
 
