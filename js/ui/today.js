@@ -5,6 +5,9 @@ import { todaySummary, bestWindow } from "../engine/today.js";
 import { proteinTarget } from "../engine/body.js";
 import { getForecast, setLocation, askPosition } from "../data/weather.js";
 import { getSettings } from "../data/config.js";
+import { loadStrength } from "../data/strength.js";
+import { nextSession, strengthDaily, strengthContext } from "../engine/schedule.js";
+import { SESSIONS, fatigueState } from "../engine/strength.js";
 
 const TONE = { fresc: "ok", assimilant: "ok", carregat: "warn", sobrecarregat: "bad" };
 const dec = (n, d = 1) => n == null ? "—" : n.toLocaleString("ca-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -37,7 +40,8 @@ export async function renderToday(root, app) {
     return;
   }
 
-  const s = todaySummary({ acts, settings, now });
+  const { sessions } = await loadStrength(db);
+  const s = todaySummary({ acts, settings, now, extraDaily: strengthDaily(sessions) });
 
   // ── Estat del dia ──
   if (s.status) {
@@ -53,6 +57,20 @@ export async function renderToday(root, app) {
         h("div.stat", h("b", st.acwr == null ? "—" : dec(st.acwr, 2)), h("span", "ACWR")),
         h("div.stat", h("b", dec(s.ctl)), h("span", "Fitness (CTL)"))),
       s.ctlDelta28 == null ? null : h("p.small.muted", `El fitness ${s.ctlDelta28 > 0 ? "puja" : s.ctlDelta28 < 0 ? "baixa" : "es manté"}: ${sign(s.ctlDelta28) || "0"} en les últimes 4 setmanes.`)));
+  }
+
+  // ── Força ──
+  const ns = nextSession(sessions, settings, now);
+  if (ns.due || ns.doneToday) {
+    const sc = strengthContext({ acts, now, sessions });
+    const fat = fatigueState(sc);
+    root.append(h("section.card", { "aria-labelledby": "h-str" },
+      h("div.today-strength",
+        h("div", h("p.eyebrow", { id: "h-str" }, "Força"),
+          h("h2", ns.doneToday ? `Sessió ${ns.doneToday.type} feta` : `Toca la sessió ${ns.type}`),
+          h("p.small.muted", ns.doneToday ? `${ns.doneToday.minutes} min · càrrega ${ns.doneToday.load}` :
+            SESSIONS[ns.type].name + (fat.high ? " · versió suau per la fatiga" : "") + (sc.dayBeforeLong && ns.type === "A" ? " · demà és la llarga" : ""))),
+        ns.doneToday ? h("span.status.ok", "Fet") : h("a.btn.primary", { href: "#/forca" }, "Comença"))));
   }
 
   // ── Setmana ──

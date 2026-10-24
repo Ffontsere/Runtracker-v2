@@ -4,6 +4,7 @@ import { openDB } from "./data/db.js";
 import { DEFAULT_SETTINGS, parseStravaReturn } from "./data/config.js";
 import { renderProfile } from "./ui/profile.js";
 import { renderToday } from "./ui/today.js";
+import { renderStrength } from "./ui/strength.js";
 import { h, fmtInt } from "./ui/dom.js";
 
 export const ROUTES = {
@@ -58,6 +59,7 @@ export async function start({ win = window, db = null, fetchImpl, now, sleep, ge
       return renderProfile(root, { db, fetchImpl, now, win, sleep, notice: n });
     }
     if (name === "avui") return renderToday(root, { db, fetchImpl, now, geo });
+    if (name === "forca") return renderStrength(root, { db, now });
     placeholder(root, name, await db.count("activities"));
   }
   win.addEventListener("hashchange", () => { show().catch(e => console.error(e)); });

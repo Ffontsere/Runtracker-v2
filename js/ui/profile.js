@@ -6,6 +6,7 @@ import { getWorkerConfig, setWorkerConfig, getSettings, getSyncState, setSyncSta
 import { workerClient, syncActivities, runBackfill, backfillQueue, SyncError } from "../data/strava.js";
 import { readV1Storage, readV1Backup, migrate, saveMigration } from "../data/migrate.js";
 import { recalcAll } from "../data/recalc.js";
+import { strengthDays, DOW_NAMES } from "../engine/schedule.js";
 
 /**
  * @param {HTMLElement} root
@@ -71,6 +72,25 @@ export async function renderProfile(root, app) {
     h("div.grid2", fMax.el, fRest.el, fWeight.el, fHeight.el),
     physMsg,
     h("div.row", physBtn)));
+
+  // ─────────────── Dies de força ───────────────
+  const daysMsg = h("div.msg");
+  const sd = strengthDays(await getSettings(db));
+  const ORDER = [1, 2, 3, 4, 5, 6, 0];
+  const daySel = (t, label) => h("div.field", h("label", { for: `sd-${t}` }, label),
+    h("select.input", { id: `sd-${t}`, onchange: async e => {
+      try {
+        const cur = await getSettings(db);
+        const next = { ...strengthDays(cur), [t]: +e.target.value };
+        await db.setKV("settings", { ...cur, strengthDays: next });
+        say(daysMsg, next.A === next.B ? "Les dues sessions cauen el mateix dia: millor separar-les almenys 48 h." : `Desat: A el ${DOW_NAMES[next.A]}, B el ${DOW_NAMES[next.B]}.`, next.A === next.B ? "warn" : "ok");
+      } catch (err) { say(daysMsg, "No s'ha pogut desar: " + err.message, "bad"); }
+    } }, ...ORDER.map(d => h("option", { value: String(d), selected: d === sd[t] }, DOW_NAMES[d].charAt(0).toUpperCase() + DOW_NAMES[d].slice(1)))));
+  root.append(h("section.card", { "aria-labelledby": "h-sdays" },
+    h("div.card-head", h("h2", { id: "h-sdays" }, "Dies de força")),
+    h("p.small.muted", "L'Avui t'avisa quan toca. Si un dia no pots, la pestanya Força et proposa la sessió que fa més temps que no fas."),
+    h("div.grid2", daySel("A", "Sessió A · Cames"), daySel("B", "Sessió B · Tronc i tendons")),
+    daysMsg));
 
   // ─────────────── Lògica ───────────────
   let cfg = await getWorkerConfig(db);

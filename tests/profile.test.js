@@ -209,12 +209,12 @@ test("tornada amb error: ho explica", async () => {
 });
 
 test("navegació: pestanya marcada i pantalles pendents", async () => {
-  const w = newDom("https://ffontsere.github.io/Runtracker-v2/#/forca");
+  const w = newDom("https://ffontsere.github.io/Runtracker-v2/#/cos");
   const db = await openDB(new IDBFactory());
   const app = await start({ win: w, db, fetchImpl: fakeNet(), now: () => NOW });
   await app.ready;
-  assert.equal(app.route(), "forca");
-  assert.equal($('.nav [data-route="forca"]').getAttribute("aria-current"), "page");
-  assert.match($("#view").textContent, /Força.*en construcció/s);
+  assert.equal(app.route(), "cos");
+  assert.equal($('.nav [data-route="cos"]').getAttribute("aria-current"), "page");
+  assert.match($("#view").textContent, /Cos.*en construcció/s);
   assert.deepEqual(await db.getKV("settings"), { hrMax: 176, hrRest: 45 }, "configuració per defecte");
 });

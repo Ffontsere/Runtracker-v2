@@ -6,7 +6,7 @@ import { wxWindowScore, wxCat } from "./weather.js";
 
 /** Estat, forma, setmana, recuperació i última sortida. */
 export function todaySummary(ctx) {
-  const { acts, settings, now } = ctx;
+  const { acts, settings, now } = ctx; // ctx.extraDaily: càrrega de força per dia
   if (!acts.length) return null;
   const ff = calcFF(ctx);
   const fn = ffNow(ff);
