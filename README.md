@@ -9,7 +9,7 @@ Redisseny de RunTracker: mòduls JavaScript sense compilació, motor de càlculs
 | 1 | Motor de càlculs portat de la v1 i comparat amb ella | Fet: idèntic a la v47 (la versió en ús) amb dades sintètiques i amb la còpia real de 2.018 sortides |
 | 2 | Dades (IndexedDB), migració des de `rt4:*`, Worker de Cloudflare, sincronització amb Strava | Fet, provat i Worker publicat (ff-runtracker.ffontsere.workers.dev) |
 | 3 | Força i Cos | Fet a l'app, amb còpia automàtica al Worker |
-| 4 | Disseny de les pantalles | En curs: carcassa, Perfil, Avui, Força, Cos, Sortides i Progrés fets. Falta Clima. Publicada a ffontsere.github.io/Runtracker-v2 |
+| 4 | Disseny de les pantalles | Fet: les 6 pestanyes i el Perfil. Publicada a ffontsere.github.io/Runtracker-v2 Publicada a ffontsere.github.io/Runtracker-v2 |
 | 5 | Prova en paral·lel amb la v1 | Pendent |
 
 ## Estructura
@@ -19,7 +19,7 @@ index.html      l'app (GitHub Pages)
 sw.js           service worker: sempre l'última versió amb connexió, i l'app s'obre sense
 css/app.css     estil comú, clar i fosc
 js/app.js       arrencada i navegació (#/avui … #/perfil)
-js/ui/          pantalles (profile.js, today.js, strength.js, body.js, activities.js, progress.js), gràfics (chart.js) i ajudes (dom.js)
+js/ui/          pantalles (profile.js, today.js, strength.js, body.js, activities.js, progress.js, climate.js), gràfics (chart.js) i ajudes (dom.js)
 js/engine/      càlculs purs, sense pantalla ni emmagatzematge
   dates.js        dates en hora local
   load.js         TRIMP, CTL/ATL/TSB, ACWR, monotonia, projecció, recuperació, estat
@@ -30,6 +30,7 @@ js/engine/      càlculs purs, sense pantalla ni emmagatzematge
   body.js         Marina, cintura/alçada, tendències, proteïna
   activity.js     llista i detall de sortides: resum de la sessió, avaluació, semblants, període
   progress.js     forma i projecció, volum, marques (amb trams), predicció VDOT i Riegel, VO₂ setmanal
+  climate.js      millor hora de cada dia, hora a hora, sortides sense el temps del dia
   schedule.js     quina sessió de força toca, setmanes regulars, dia de la llarga
   today.js        resum d'Avui i millor hora per córrer
   derive.js       mètriques que surten dels streams (TRIMP exacte, zones, VO₂, deriva)

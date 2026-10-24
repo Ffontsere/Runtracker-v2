@@ -8,6 +8,7 @@ import { renderStrength } from "./ui/strength.js";
 import { renderBody } from "./ui/body.js";
 import { renderActivities, renderActivity } from "./ui/activities.js";
 import { renderProgress } from "./ui/progress.js";
+import { renderClimate } from "./ui/climate.js";
 import { h, fmtInt } from "./ui/dom.js";
 import { syncAll } from "./data/sync.js";
 
@@ -53,6 +54,7 @@ export async function start({ win = window, db = null, fetchImpl, now, sleep, ge
   let current = null;
   const listState = { db, now, fetchImpl }; // es manté entre visites: període, mesos mostrats i on eres
   const progState = { db, now }; // recorda l'apartat de Progrés
+  const wxState = { db, now, fetchImpl, geo }; // recorda el tipus i el dia triats
   async function show() {
     const m = win.location.hash.match(/^#\/(\w+)(?:\/(.+))?/) || [];
     const route = m[1], param = m[2] ? decodeURIComponent(m[2]) : null;
@@ -74,6 +76,7 @@ export async function start({ win = window, db = null, fetchImpl, now, sleep, ge
       return renderActivities(root, listState);
     }
     if (name === "progres") return renderProgress(root, progState);
+    if (name === "clima") return renderClimate(root, wxState);
     placeholder(root, name, await db.count("activities"));
   }
   win.addEventListener("hashchange", e => {

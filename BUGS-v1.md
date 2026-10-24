@@ -26,3 +26,7 @@ Els punts 1 i 2 són els que canvien més el que veus. Els altres són detalls.
 - **#2 Marques:** `personalBests` (`js/engine/progress.js`) també fa servir els millors esforços dels streams. Per a cada distància es queda el temps més ràpid entre la sortida sencera (com la v1) i el millor tram, marcat com a «tram» i ajustat al pendent. Mai surt pitjor que a la v1 (hi ha un test que ho comprova).
 - **#3 Predicció:** `predictions` fa servir el VDOT de Daniels de debò (invertit per bisecció) i, al costat, Riegel amb l'exponent personal. La referència és la marca de 5 km a la mitja amb més VDOT dels últims 12 mesos.
 - **#7 Zones:** la distribució per zones de Progrés deixa fora les sortides sense zona i ja no dona NaN.
+
+## Corregit a la v2 (pestanya Clima, 24/10/2026)
+
+- **Hora de la temperatura de cada sortida:** `fetchActTemp` feia `new Date(a.startTime).getHours()`, però Strava dona l'hora local amb una «Z» al final. El navegador la llegia com a UTC i a Barcelona agafava la temperatura de 2 hores més tard a l'estiu (1 a l'hivern). La v2 llegeix l'hora directament de la cadena (`js/data/weather.js`, `fetchActivityWx`). Les temperatures ja desades a la v1 no es tornen a demanar.

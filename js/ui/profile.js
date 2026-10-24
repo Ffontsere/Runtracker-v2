@@ -9,6 +9,7 @@ import { recalcAll } from "../data/recalc.js";
 import { strengthDays, DOW_NAMES } from "../engine/schedule.js";
 import { syncAll, syncSoon } from "../data/sync.js";
 import { applyNotes } from "../data/notes.js";
+import { fillActivityWx } from "../data/weather.js";
 
 /**
  * @param {HTMLElement} root
@@ -258,6 +259,7 @@ export async function renderProfile(root, app) {
     try {
       const r = await syncActivities({ db, worker: client(), fetchImpl, now: now() });
       await applyNotes(db); // les notes (RPE, cursa…) que hi hagi a la còpia per a les sortides noves
+      if (r.added) await fillActivityWx(db, { fetchImpl, now: now(), max: 20, ...(sleep ? { sleep } : {}) }).catch(() => {}); // el temps del dia de les noves (corregeix el VO₂)
       await setSyncState(db, { lastSync: now(), lastResult: r });
       say(dataMsg, r.added ? `${r.added === 1 ? "1 sortida nova" : fmtInt(r.added) + " sortides noves"}.` : "Ja ho tenies tot.", "ok");
     } catch (e) {

@@ -215,6 +215,6 @@ test("navegació: pestanya marcada i pantalles pendents", async () => {
   await app.ready;
   assert.equal(app.route(), "clima");
   assert.equal($('.nav [data-route="clima"]').getAttribute("aria-current"), "page");
-  assert.match($("#view").textContent, /Clima.*en construcció/s);
+  assert.equal($("#view h1").textContent, "Clima");
   assert.deepEqual(await db.getKV("settings"), { hrMax: 176, hrRest: 45 }, "configuració per defecte");
 });

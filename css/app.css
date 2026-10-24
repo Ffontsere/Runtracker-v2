@@ -250,3 +250,25 @@ select.input{appearance:auto}
 .lg-item{display:inline-flex;align-items:center;gap:6px}
 .bullets{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px}
 .warn-text{color:var(--warn)}
+
+/* Clima */
+.days li{padding:0;border-top:1px solid var(--line)}
+.days li:first-child{border-top:0}
+.day{width:100%;display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;text-align:left;background:none;border:0;border-radius:10px;padding:10px 6px;min-height:52px}
+.day[aria-pressed="true"]{background:var(--accent-soft)}
+.day-d,.day-w{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.day-s{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.day-s b{font-family:var(--display);font-size:22px}
+.day-s span{font-size:11px;font-weight:600}
+.day-s.ok b,.day-s.ok span{color:var(--ok)} .day-s.warn b,.day-s.warn span{color:var(--warn)} .day-s.bad b,.day-s.bad span{color:var(--bad)}
+.hours li{padding:6px 0}
+.hours li.past{opacity:.4}
+.hour-row{display:grid;grid-template-columns:44px 34px 1fr 72px 28px;gap:8px;align-items:center}
+.hour-h{font-size:13px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.hour-t{font-weight:700;font-variant-numeric:tabular-nums}
+.hour-sky{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hour-bar{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden;display:block}
+.hour-bar i{display:block;height:100%;border-radius:4px;background:var(--ok)}
+.hour-bar.warn i{background:var(--warn)} .hour-bar.bad i{background:var(--bad)}
+.hour-s{text-align:right;font-variant-numeric:tabular-nums}
+.hour-x{padding-left:52px;margin-top:2px}
