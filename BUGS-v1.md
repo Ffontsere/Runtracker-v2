@@ -20,3 +20,9 @@ Els punts 1 i 2 són els que canvien més el que veus. Els altres són detalls.
 ## Minuts en Z4–Z5 al resum de la sessió
 
 `sessionSummary` divideix `tiz[3] + tiz[4]` per 60, però `tiz` ja és en minuts. Una sessió amb 12 min a Z4–Z5 dona `Math.round(0,2) = 0` i la frase «Uns X min en Z4-Z5» no surt mai. La v2 fa servir els minuts directament (`js/engine/activity.js`).
+
+## Corregits a la v2 (pestanya Progrés, 24/10/2026)
+
+- **#2 Marques:** `personalBests` (`js/engine/progress.js`) també fa servir els millors esforços dels streams. Per a cada distància es queda el temps més ràpid entre la sortida sencera (com la v1) i el millor tram, marcat com a «tram» i ajustat al pendent. Mai surt pitjor que a la v1 (hi ha un test que ho comprova).
+- **#3 Predicció:** `predictions` fa servir el VDOT de Daniels de debò (invertit per bisecció) i, al costat, Riegel amb l'exponent personal. La referència és la marca de 5 km a la mitja amb més VDOT dels últims 12 mesos.
+- **#7 Zones:** la distribució per zones de Progrés deixa fora les sortides sense zona i ja no dona NaN.
