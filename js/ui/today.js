@@ -8,7 +8,8 @@ import { dateStr } from "../engine/dates.js";
 import { getForecast, setLocation, askPosition } from "../data/weather.js";
 import { getSettings } from "../data/config.js";
 import { loadStrength } from "../data/strength.js";
-import { nextSession, strengthDaily, strengthContext } from "../engine/schedule.js";
+import { nextSession, strengthDaily, strengthContext, runTypeFor } from "../engine/schedule.js";
+import { WXW } from "../engine/weather.js";
 import { SESSIONS, fatigueState } from "../engine/strength.js";
 
 const TONE = { fresc: "ok", assimilant: "ok", carregat: "warn", sobrecarregat: "bad" };
@@ -121,15 +122,28 @@ export async function renderToday(root, app) {
       wxBox.replaceChildren(h("p.small", "Per dir-te la millor hora cal saber on corres. La ubicació només s'envia a Open-Meteo per baixar la previsió."), h("div.row", b));
       return;
     }
-    const b = bestWindow(fc.hours, now, "easy");
-    if (!b) { wxBox.replaceChildren(h("p.small.muted", "La previsió no cobreix les pròximes hores.")); return; }
+    // Tipus de sortida: el que has triat avui, o el dels teus hàbits (la llarga el seu dia, la resta fàcil).
+    const today = dateStr(new Date(now));
+    const saved = await db.getKV("wxType");
+    const manual = saved && saved.date === today ? saved.type : null;
+    let type = manual || runTypeFor(acts, now, now);
+    let b = bestWindow(fc.hours, now, type);
+    if (b && b.day === "demà" && !manual) { const t2 = runTypeFor(acts, now, now + 864e5); if (t2 !== type) { type = t2; b = bestWindow(fc.hours, now, type); } }
+    const picker = h("div.seg.wide", { role: "group", "aria-label": "Tipus de sortida" },
+      ...[["easy", "Fàcil"], ["tempo", "Tempo"], ["quality", "Sèries"], ["long", "Llarga"]].map(([t, l]) =>
+        h("button", { type: "button", "aria-pressed": String(t === type), onclick: async () => {
+          await db.setKV("wxType", { date: today, type: t }); await paintWx();
+        } }, l)));
+    if (!b) { wxBox.replaceChildren(picker, h("p.small.muted", "La previsió no cobreix les pròximes hores.")); return; }
     const why = b.why.length ? `, amb ${b.why.join(" i ")}` : "";
-    wxBox.replaceChildren(
+    const w = WXW[type];
+    const origin = manual ? "triat per tu" : type === "long" ? "és el teu dia habitual de llarga" : "per defecte";
+    wxBox.replaceChildren(picker,
       h("div.best", { dataset: { tone: b.cat.tone } },
         h("div", h("p.eyebrow", b.day === "avui" ? "Millor hora avui" : "Avui ja no; demà"),
           h("p.best-time", hh(b.hour))),
         h("div.best-score", h("b", String(b.score)), h("span", b.cat.l))),
-      h("p.small", `${dec(b.temp, 0)} °C per a un rodatge de 45 min${why}.` +
+      h("p.small", `${dec(b.temp, 0)} °C per a ${w.n.toLowerCase()} de ${w.dur} min (${origin})${why}.` +
         (b.now && b.day === "avui" && b.hour !== new Date(now).getHours() ? ` Ara mateix: ${b.now.score} (${b.now.cat.l.toLowerCase()}), ${dec(b.now.temp, 0)} °C.` : "")));
   }
   await paintWx();

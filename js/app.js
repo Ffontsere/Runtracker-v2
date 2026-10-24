@@ -75,4 +75,6 @@ export async function start({ win = window, db = null, fetchImpl, now, sleep, ge
 
 if (typeof window !== "undefined" && !window.__RT_TEST__) {
   start().catch(e => console.error(e));
+  // Service worker: sempre l'última versió si hi ha connexió, i l'app s'obre sense connexió.
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(e => console.error("Service worker:", e));
 }

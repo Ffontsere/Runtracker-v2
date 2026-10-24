@@ -114,3 +114,34 @@ test("pantalla sense ubicació: botó per fer servir el GPS i després la millor
   const s = await db.getKV("settings");
   assert.deepEqual([s.wxLat, s.wxLng], [41.6812, 2.2846]);
 });
+
+test("tipus de sortida per al clima: llarga el dia habitual, fàcil la resta, i es pot canviar per a avui", async () => {
+  const { runTypeFor } = await import("../js/engine/schedule.js");
+  const acts = [];
+  for (const sun of ["2026-09-06", "2026-09-13", "2026-09-20", "2026-09-27", "2026-10-04", "2026-10-11", "2026-10-18"]) {
+    acts.push({ id: "l" + sun, date: sun, distance: 21, duration: 7000, avgHR: 140, trimp: 120, source: "strava" });
+    const wed = new Date(Date.parse(sun + "T12:00") - 4 * 864e5).toISOString().slice(0, 10);
+    acts.push({ id: "e" + wed, date: wed, distance: 10, duration: 3300, avgHR: 138, trimp: 60, source: "strava" });
+  }
+  const SUN = new Date("2026-10-25T07:30:00").getTime(), SAT = new Date("2026-10-24T07:30:00").getTime();
+  assert.equal(runTypeFor(acts, SUN, SUN), "long");
+  assert.equal(runTypeFor(acts, SAT, SAT), "easy");
+
+  const db = await openDB(new IDBFactory());
+  await db.putMany("activities", acts);
+  await db.setKV("settings", { hrMax: 176, hrRest: 45, wxLat: 41.68, wxLng: 2.28 });
+  const fc = forecast("2026-10-25");
+  const root = document.getElementById("view");
+  const show = () => renderToday(root, { db, now: () => SUN, fetchImpl: async () => new Response(JSON.stringify(fc)) });
+  await show();
+  const pressed = () => root.querySelector('[aria-label="Tipus de sortida"] [aria-pressed="true"]').textContent;
+  assert.equal(pressed(), "Llarga");
+  assert.match(root.textContent, /tirada llarga de 95 min \(és el teu dia habitual de llarga\)/);
+  [...root.querySelectorAll('[aria-label="Tipus de sortida"] button')].find(b => b.textContent === "Sèries").click();
+  for (let i = 0; i < 100 && pressed() !== "Sèries"; i++) await new Promise(r => setTimeout(r, 10));
+  assert.match(root.textContent, /sèries \/ qualitat de 60 min \(triat per tu\)/);
+  await show();
+  assert.equal(pressed(), "Sèries", "la tria es manté durant el dia");
+  await renderToday(root, { db, now: () => SUN + 864e5, fetchImpl: async () => new Response(JSON.stringify(fc)) });
+  assert.notEqual(root.querySelector('[aria-label="Tipus de sortida"] [aria-pressed="true"]').textContent, "Sèries", "l'endemà torna als hàbits");
+});

@@ -41,6 +41,15 @@ export function longRunDow(acts, now, weeks = 8) {
   return top && top[1] >= Math.ceil(Object.keys(best).length / 2) ? +top[0] : null;
 }
 
+/**
+ * Tipus de sortida per puntuar el clima d'un dia, segons els teus hàbits:
+ * el dia habitual de la llarga és "long"; la resta, "easy". Es pot canviar a mà.
+ */
+export function runTypeFor(acts, now, dayMs) {
+  const lr = longRunDow(acts, now);
+  return lr !== null && new Date(dayMs).getDay() === lr ? "long" : "easy";
+}
+
 /** Càrrega de força per dia, per sumar-la a la forma (CTL/ATL). */
 export function strengthDaily(sessions) {
   const out = {};

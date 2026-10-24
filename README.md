@@ -16,6 +16,7 @@ Redisseny de RunTracker: mòduls JavaScript sense compilació, motor de càlculs
 
 ```
 index.html      l'app (GitHub Pages)
+sw.js           service worker: sempre l'última versió amb connexió, i l'app s'obre sense
 css/app.css     estil comú, clar i fosc
 js/app.js       arrencada i navegació (#/avui … #/perfil)
 js/ui/          pantalles (profile.js, today.js, strength.js, body.js) i ajudes (dom.js)
@@ -52,6 +53,7 @@ Cada funció rep `{ acts, settings, now, tempCache, streamCache }` en lloc de ll
 
 - FC màxima 176 i en repòs 45 (24/10/2026). La migració recalcula amb aquests valors el TRIMP, les zones i el VO₂ de totes les sortides.
 - El secret i el refresh token de Strava només són al Worker.
+- Clima (24/10/2026): el tipus de sortida que es puntua surt dels hàbits. El dia habitual de la llarga és Llarga i la resta Fàcil; a l'Avui es pot canviar per a aquell dia.
 - Força, cos i configuració (pes, alçada, dies de força, objectius) es copien soles al Worker en obrir l'app i en desar. La ubicació i la FC es queden a cada mòbil. Un esborrat es desa com a marca perquè arribi a la còpia.
 
 ## Proves
