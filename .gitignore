@@ -1,0 +1,6 @@
+node_modules/
+dist/
+# Dades personals: la còpia de seguretat real només es fa servir en local per comparar
+tests/private/
+*.backup.json
+NOTES-nit.md

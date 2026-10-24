@@ -1,0 +1,11 @@
+{
+  "name": "runtracker-v2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "TZ=Europe/Madrid node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}
