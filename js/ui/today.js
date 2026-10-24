@@ -1,6 +1,6 @@
 // RunTracker v2 — pantalla Avui: estat del dia, setmana, millor hora per córrer i proteïna.
 
-import { h, say, fmtInt } from "./dom.js";
+import { h, say, fmtInt, fmtPace } from "./dom.js";
 import { todaySummary, bestWindow } from "../engine/today.js";
 import { proteinTarget, bodySummary } from "../engine/body.js";
 import { loadBody, sexOf } from "../data/body.js";
@@ -15,7 +15,7 @@ import { SESSIONS, fatigueState } from "../engine/strength.js";
 const TONE = { fresc: "ok", assimilant: "ok", carregat: "warn", sobrecarregat: "bad" };
 const dec = (n, d = 1) => n == null ? "—" : n.toLocaleString("ca-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
 const sign = n => n == null ? "" : (n > 0 ? "+" : n < 0 ? "−" : "") + dec(Math.abs(n));
-export const fmtPace = s => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "—";
+export { fmtPace } from "./dom.js";
 const hh = h0 => String(h0).padStart(2, "0") + ":00";
 
 function lastRunText(l) {

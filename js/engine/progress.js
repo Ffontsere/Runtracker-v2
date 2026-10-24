@@ -5,7 +5,7 @@
 
 import { daysAgo, weekKey, dateStr } from "./dates.js";
 import { calcFF, ffNow, projectFitness, actLoad } from "./load.js";
-import { o2Cost } from "./physio.js";
+import { o2Cost, thresholdZones, lt2Estimate, karvonen } from "./physio.js";
 import { RACE_DISTS, personalRiegelExp, getWeekly } from "./performance.js";
 
 const WINDOWS = [60, 120, 300, 600, 1200, 1800, 3600];
@@ -146,4 +146,32 @@ export function yearProgress({ acts, settings, now }) {
   const start = new Date(y, 0, 1).getTime(), end = new Date(y + 1, 0, 1).getTime();
   const frac = (now - start) / (end - start);
   return { year: y, km, goal, expected: goal ? Math.round(goal * frac) : null, pct: goal ? Math.round(km / goal * 100) : null };
+}
+
+/**
+ * Les zones que s'apliquen de debò, amb el seu origen: manuals (Perfil/Progrés), Seiler (LT1 i LT2) o Karvonen.
+ * bounds = inici de Z2, Z3, Z4 i Z5. LT1 = inici de Z3; LT2 = inici de Z4.
+ */
+export function activeZones(ctx) {
+  const { settings } = ctx;
+  const names = ["Recuperació", "Fàcil (aeròbic)", "Tempo", "Llindar", "VO₂max"];
+  let bounds, source, detail = null;
+  if (settings.zones && settings.zones.length === 4) { bounds = settings.zones; source = "manual"; }
+  else {
+    const tz = thresholdZones(ctx);
+    if (tz) { bounds = [tz.zones[0].hi, tz.zones[1].hi, tz.zones[2].hi, tz.zones[3].hi]; source = "seiler"; detail = { lt1src: tz.lt1src, lt2src: lt2Estimate(ctx)?.src || null }; }
+    else { bounds = karvonen(settings.hrMax, settings.hrRest); source = "karvonen"; }
+  }
+  const top = settings.hrMax || bounds[3] + 10;
+  const rows = names.map((n, i) => ({ z: `Z${i + 1}`, name: n, lo: i === 0 ? null : bounds[i - 1], hi: i === 4 ? top : bounds[i] }));
+  return { bounds, source, detail, lt1: bounds[1], lt2: bounds[2], rows };
+}
+
+/** Valida 4 límits de zona. Retorna el missatge d'error o null. */
+export function validateZones(b, { hrMax, hrRest }) {
+  if (b.length !== 4 || b.some(v => !Number.isInteger(v))) return "Posa els quatre límits en pulsacions, sense decimals.";
+  if (b[0] <= hrRest) return `L'inici de Z2 ha de ser més alt que la FC en repòs (${hrRest}).`;
+  if (b[3] >= hrMax) return `L'inici de Z5 ha de ser més baix que la FC màxima (${hrMax}).`;
+  for (let i = 1; i < 4; i++) if (b[i] <= b[i - 1]) return "Cada límit ha de ser més alt que l'anterior.";
+  return null;
 }

@@ -1,15 +1,16 @@
 // RunTracker v2 — pestanya Progrés: Forma, Rendiment i Fisiologia.
 
-import { h, fmtInt } from "./dom.js";
+import { h, say, fmtInt } from "./dom.js";
 import { fmtPace, fmtDur } from "./activities.js";
 import { lineChart, barChart } from "./chart.js";
-import { formSeries, weeklyVolume, yearProgress, personalBests, predictions, vo2Series } from "../engine/progress.js";
+import { formSeries, weeklyVolume, yearProgress, personalBests, predictions, vo2Series, activeZones, validateZones } from "../engine/progress.js";
 import { calcACWR, calcMonotony } from "../engine/load.js";
 import { blockReport, loadResponse, calcStreaks } from "../engine/performance.js";
-import { currentVO2max, efficiencyTrend, efficiencySeries, durabilityTrend, thresholdZones, getZoneDist } from "../engine/physio.js";
+import { currentVO2max, efficiencyTrend, efficiencySeries, durabilityTrend, getZoneDist } from "../engine/physio.js";
 import { strengthDaily } from "../engine/schedule.js";
 import { getSettings } from "../data/config.js";
 import { loadStrength } from "../data/strength.js";
+import { recalcAll } from "../data/recalc.js";
 
 const dec = (n, d = 1) => n == null ? "—" : Number(n).toLocaleString("ca-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
 const sign = n => n == null ? "—" : (n > 0 ? "+" : n < 0 ? "−" : "") + dec(Math.abs(n));
@@ -40,9 +41,10 @@ export async function renderProgress(root, app) {
   const paint = () => {
     const sub = app.sub || "forma";
     tabs.replaceChildren(...SUBS.map(([k, l]) => h("button", { type: "button", role: "tab", "aria-selected": String(k === sub), "aria-pressed": String(k === sub), onclick: () => { app.sub = k; paint(); } }, l)));
-    body.replaceChildren(...(sub === "forma" ? forma(ctx) : sub === "rendiment" ? rendiment(ctx) : fisio(ctx)));
+    body.replaceChildren(...(sub === "forma" ? forma(ctx) : sub === "rendiment" ? rendiment(ctx) : fisio(ctx, app)));
   };
   root.replaceChildren(head, tabs, body);
+  app.repaint = () => renderProgress(root, app);
   paint();
 }
 
@@ -152,7 +154,7 @@ function rendiment(ctx) {
 }
 
 // ─────────────── Fisiologia ───────────────
-function fisio(ctx) {
+function fisio(ctx, app) {
   const out = [];
   const v = currentVO2max(ctx, 42);
   const vs = vo2Series(ctx, 26);
@@ -187,22 +189,61 @@ function fisio(ctx) {
     (du.prev ? `, abans ${dec(du.prev.avg)} %. ${du.rec.avg < du.prev.avg ? "La durabilitat millora." : "La durabilitat no millora: allarga la llarga de mica en mica."}` : ".")));
   out.push(eff);
 
-  const tz = thresholdZones(ctx);
+  out.push(zonesCard(ctx, app));
+  return out;
+}
+
+/** Zones: les que s'apliquen, la distribució de 28 dies i l'editor. */
+function zonesCard(ctx, app) {
+  const az = activeZones(ctx);
   // Les sortides sense zona (antigues) es deixen fora: a la v1 feien que la distribució donés NaN (BUGS-v1 #7).
   const zd = getZoneDist({ acts: ctx.acts.filter(a => a.hrZone != null), now: ctx.now }, 28);
-  const z = h("section.card", { "aria-labelledby": "h-zones" }, h("h2", { id: "h-zones" }, "Zones"));
-  if (tz) z.append(
-    h("p.small.muted", `Model polaritzat de Seiler. LT2 ${tz.lt2} ppm, LT1 ${tz.lt1} ppm (${tz.lt1src}).`),
+  const src = az.source === "manual" ? "Zones manuals." : az.source === "seiler"
+    ? `Automàtiques, model polaritzat de Seiler: LT1 ${az.lt1} ppm (${az.detail.lt1src}), LT2 ${az.lt2} ppm (${az.detail.lt2src || "estimat"}).`
+    : "Automàtiques per la FC de reserva (Karvonen): encara no hi ha prou esforços durs per estimar el llindar.";
+  const z = h("section.card", { "aria-labelledby": "h-zones" },
+    h("div.card-head", h("h2", { id: "h-zones" }, "Zones"), h("span", { class: "tag" + (az.source === "manual" ? " ok" : "") }, az.source === "manual" ? "manuals" : "automàtiques")),
+    h("p.small.muted", src),
     h("table.tbl", h("thead", h("tr", h("th", "Zona"), h("th", "FC"), h("th", "28 dies"))),
-      h("tbody", ...tz.zones.map((x, i) => h("tr", h("td", `${x.z} ${x.name}`), h("td", `${x.lo || "<"}–${x.hi}`), h("td", zd ? `${zd.pct[i]} %` : "—"))))));
+      h("tbody", ...az.rows.map((x, i) => h("tr", h("td", `${x.z} ${x.name}`), h("td", x.lo == null ? `< ${x.hi}` : `${x.lo}–${x.hi}`), h("td", zd ? `${zd.pct[i]} %` : "—"))))));
   if (zd) {
     const easy = zd.pct[0] + zd.pct[1];
-    z.append(h("p", { class: "small " + (easy >= 75 ? "" : "warn-text") }, easy >= 75 ? `${easy} % del temps en Z1–Z2: la distribució és polaritzada, com toca.` : `Només ${easy} % en Z1–Z2: massa intensitat. L'objectiu és un 80 % fàcil.`),
+    z.append(h("p", { class: "small " + (easy >= 75 ? "" : "warn-text") }, easy >= 75 ? `${easy} % del temps en Z1–Z2: la distribució és polaritzada, com toca.` : `Només ${easy} % en Z1–Z2: massa intensitat, o unes zones que no són les teves. L'objectiu és un 80 % fàcil.`),
       h("p.small.muted", `${zd.coverage} % del temps amb dades segon a segon; la resta, per la FC mitjana de cada sortida.`));
   }
-  if (!tz && !zd) z.append(h("p.small.muted", "Calen sortides amb FC de les últimes 4 setmanes i algun esforç dur de 20 a 60 minuts per estimar el llindar."));
-  out.push(z);
-  return out;
+
+  // ── Editor ──
+  const msg = h("div.msg");
+  const labels = ["Inici de Z2", "Inici de Z3 (LT1)", "Inici de Z4 (LT2)", "Inici de Z5"];
+  const ins = az.bounds.map((b, i) => h("input.input", { id: `zb-${i}`, type: "text", inputmode: "numeric", autocomplete: "off", value: String(b) }));
+  const save = h("button.btn.primary", { type: "button" }, "Desa i recalcula");
+  const reset = h("button.btn.quiet", { type: "button", hidden: az.source !== "manual" }, "Torna a les automàtiques");
+  const apply = async zones => {
+    save.disabled = reset.disabled = true;
+    say(msg, "Recalculant les zones de totes les sortides…");
+    try {
+      const { db } = app;
+      const cur = (await db.getKV("settings")) || {};
+      await db.setKV("settings", { ...cur, zones });
+      const r = await recalcAll(db, { hrMax: cur.hrMax, hrRest: cur.hrRest, now: ctx.now });
+      app.zoneMsg = [`Desat. ${fmtInt(r.count)} sortides recalculades.` + (r.pendingStreams ? ` El temps per zona de ${fmtInt(r.pendingStreams)} sortides de l'últim any es refarà en analitzar els streams (Perfil → Analitza les pendents).` : ""), "ok"];
+      await app.repaint();
+    } catch (e) { say(msg, "No s'ha pogut desar: " + e.message, "bad"); save.disabled = reset.disabled = false; }
+  };
+  save.onclick = () => {
+    const b = ins.map(x => Number(x.value.trim()));
+    const err = validateZones(b, ctx.settings);
+    if (err) return say(msg, err, "bad");
+    apply(b);
+  };
+  reset.onclick = () => apply(null);
+  if (app.zoneMsg) { say(msg, ...app.zoneMsg); app.zoneMsg = null; }
+  z.append(h("details", { open: !!msg.textContent || undefined }, h("summary", "Edita les zones"),
+    h("div.stack",
+      h("p.small.muted", `Posa on comença cada zona, en pulsacions. FC en repòs ${ctx.settings.hrRest}, màxima ${ctx.settings.hrMax}. En desar, es recalcula la zona i el temps per zona de totes les sortides.`),
+      h("div.grid2", ...ins.map((x, i) => h("div.field", h("label", { for: `zb-${i}` }, labels[i]), h("div.unit", x, h("span", "ppm"))))),
+      msg, h("div.row", save, reset))));
+  return z;
 }
 
 const dateFromAgo = (now, ago) => { const d = new Date(now - ago * 864e5); return d.toISOString().slice(0, 10); };

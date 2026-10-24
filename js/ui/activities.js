@@ -1,6 +1,6 @@
 // RunTracker v2 — Sortides: llista per mesos amb les xifres del període, i el detall de cada sortida.
 
-import { h, say, fmtInt } from "./dom.js";
+import { h, say, fmtInt, fmtPace, fmtDur, fmtDayMonth } from "./dom.js";
 import { ZONES, sessionSummary, intensityRead, loadRead, vo2Read, efficiency, compareSimilar, weekContext, periodStats, highlights, byMonth } from "../engine/activity.js";
 import { calcStreaks } from "../engine/performance.js";
 import { activeZoneBounds, actWx, heatPaceAdjPct, calcCardiacDrift } from "../engine/physio.js";
@@ -13,8 +13,7 @@ import { workerClient, activityStreams } from "../data/strava.js";
 import { syncSoon } from "../data/sync.js";
 
 const dec = (n, d = 1) => n == null ? "—" : Number(n).toLocaleString("ca-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
-export const fmtPace = s => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "—";
-export const fmtDur = s => { if (!s) return "—"; const hh = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = Math.round(s % 60); return hh ? `${hh}:${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}` : `${m}:${String(ss).padStart(2, "0")}`; };
+export { fmtPace, fmtDur } from "./dom.js";
 const longDate = ds => new Date(ds + "T12:00:00").toLocaleDateString("ca-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const shortDate = ds => new Date(ds + "T12:00:00").toLocaleDateString("ca-ES", { weekday: "short", day: "numeric" });
 const monthName = k => { const s = new Date(k + "-15T12:00:00").toLocaleDateString("ca-ES", { month: "long", year: "numeric" }); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -48,7 +47,7 @@ export async function renderActivities(root, app) {
     const p = periodStats(ctx, days), c = p.cur;
     const hl = highlights(ctx, days);
     const sk = calcStreaks(ctx);
-    const link = (label, a, val) => a ? h("a.hl", { href: `#/activitats/${encodeURIComponent(a.id)}` }, h("span.small.muted", label), h("b", val), h("span.small.muted", shortDate(a.date))) : null;
+    const link = (label, a, val) => a ? h("a.hl", { href: `#/activitats/${encodeURIComponent(a.id)}` }, h("span.small.muted", label), h("b", val), h("span.small.muted", fmtDayMonth(a.date))) : null;
     periodBox.replaceChildren(
       h("div.card-head", h("h2", { id: "h-period" }, "Període"),
         h("div.seg", { role: "group", "aria-label": "Període" }, ...PERIODS.map(([d, l]) => h("button", { type: "button", "aria-pressed": String(d === days), onclick: () => { days = d; app.period = d; paintPeriod(); } }, l)))),

@@ -96,3 +96,41 @@ test("pantalla: els tres apartats amb gràfics, taules i el tram marcat", async 
   assert.equal(tip.hidden, false);
   assert.match(tip.textContent, /Fitness \(CTL\).*Fatiga \(ATL\)/s);
 });
+
+test("ritme i durada: s'arrodoneix el total (mai 4:60)", async () => {
+  const { fmtPace, fmtDur, fmtDayMonth } = await import("../js/ui/dom.js");
+  assert.equal(fmtPace(299.6), "5:00"); assert.equal(fmtPace(298.4), "4:58"); assert.equal(fmtPace(null), "—");
+  assert.equal(fmtDur(3599.7), "1:00:00"); assert.equal(fmtDur(59.6), "1:00"); assert.equal(fmtDur(4516), "1:15:16");
+  assert.equal(fmtDayMonth("2026-10-04"), "4/10");
+});
+
+test("zones: manuals, validació, recàlcul de totes les sortides i tornar a les automàtiques", async () => {
+  const { activeZones, validateZones } = await import("../js/engine/progress.js");
+  assert.equal(activeZones({ acts: [], settings: { hrMax: 176, hrRest: 45, zones: [125, 140, 155, 166] }, now: NOW }).source, "manual");
+  assert.match(validateZones([125, 140, 138, 166], { hrMax: 176, hrRest: 45 }), /més alt que l'anterior/);
+  assert.match(validateZones([40, 140, 155, 166], { hrMax: 176, hrRest: 45 }), /FC en repòs/);
+  assert.match(validateZones([125, 140, 155, 180], { hrMax: 176, hrRest: 45 }), /FC màxima/);
+  assert.equal(validateZones([125, 140, 155, 166], { hrMax: 176, hrRest: 45 }), null);
+
+  const db = await openDB(new IDBFactory());
+  const { acts, settings } = makeDataset();
+  await db.putMany("activities", acts.slice(-30).map(a => ({ ...a, avgHR: 138 })));
+  await db.setKV("settings", { ...settings, hrMax: 176, hrRest: 45 });
+  const root = document.getElementById("view");
+  const app = { db, now: () => NOW, sub: "fisio" };
+  await renderProgress(root, app);
+  const set = vals => vals.forEach((v, i) => { root.querySelector(`#zb-${i}`).value = String(v); });
+  set([125, 140, 138, 166]);
+  [...root.querySelectorAll("button")].find(b => b.textContent === "Desa i recalcula").click();
+  assert.match(root.textContent, /més alt que l'anterior/);
+  set([125, 142, 156, 166]);
+  [...root.querySelectorAll("button")].find(b => b.textContent === "Desa i recalcula").click();
+  for (let i = 0; i < 200 && !/sortides recalculades/.test(root.textContent); i++) await new Promise(r => setTimeout(r, 10));
+  assert.deepEqual((await db.getKV("settings")).zones, [125, 142, 156, 166]);
+  assert.ok((await db.getAll("activities")).every(a => a.hrZone === 1), "138 ppm passa a Z2 amb LT1 a 142");
+  assert.match(root.querySelector("#h-zones").parentElement.textContent, /manuals/);
+  assert.match(root.textContent, /Z3 Tempo142–156/);
+  [...root.querySelectorAll("button")].find(b => b.textContent === "Torna a les automàtiques").click();
+  for (let i = 0; i < 200 && (await db.getKV("settings")).zones !== null; i++) await new Promise(r => setTimeout(r, 10));
+  assert.equal((await db.getKV("settings")).zones, null);
+});

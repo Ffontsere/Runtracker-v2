@@ -43,3 +43,11 @@ export function fmtAgo(ts, now = Date.now()) {
   const d = Math.round(hh / 24);
   return d === 1 ? "ahir" : `fa ${d} dies`;
 }
+
+const pad2 = n => String(n).padStart(2, "0");
+/** Ritme en s/km → "m:ss". S'arrodoneix el total abans de partir-lo: 299,6 s → "5:00", no "4:60". */
+export const fmtPace = s => { if (!s) return "—"; const t = Math.round(s); return `${Math.floor(t / 60)}:${pad2(t % 60)}`; };
+/** Durada en s → "h:mm:ss" o "m:ss", amb el mateix arrodoniment. */
+export const fmtDur = s => { if (!s) return "—"; const t = Math.round(s); const hh = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), ss = t % 60; return hh ? `${hh}:${pad2(m)}:${pad2(ss)}` : `${m}:${pad2(ss)}`; };
+/** Data curta "16/10". */
+export const fmtDayMonth = ds => { const [, m, d] = ds.split("-"); return `${+d}/${+m}`; };
