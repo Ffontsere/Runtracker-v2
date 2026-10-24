@@ -7,14 +7,18 @@ Redisseny de RunTracker: mòduls JavaScript sense compilació, motor de càlculs
 | Fase | Què | Estat |
 |---|---|---|
 | 1 | Motor de càlculs portat de la v1 i comparat amb ella | Fet: idèntic a la v47 (la versió en ús) amb dades sintètiques i amb la còpia real de 2.018 sortides |
-| 2 | Dades (IndexedDB), migració des de `rt4:*`, Worker de Cloudflare, sincronització amb Strava | Fet i provat. Falta publicar el Worker (vegeu `worker/README.md`) |
+| 2 | Dades (IndexedDB), migració des de `rt4:*`, Worker de Cloudflare, sincronització amb Strava | Fet, provat i Worker publicat (ff-runtracker.ffontsere.workers.dev) |
 | 3 | Força i Cos | Motors fets i provats; prototip publicat |
-| 4 | Disseny de les pantalles | Pendent |
+| 4 | Disseny de les pantalles | En curs: carcassa amb 6 pestanyes i Perfil fets (connexió amb Strava, importació de la v1, sincronització, FC) |
 | 5 | Prova en paral·lel amb la v1 | Pendent |
 
 ## Estructura
 
 ```
+index.html      l'app (GitHub Pages)
+css/app.css     estil comú, clar i fosc
+js/app.js       arrencada i navegació (#/avui … #/perfil)
+js/ui/          pantalles (profile.js) i ajudes (dom.js)
 js/engine/      càlculs purs, sense pantalla ni emmagatzematge
   dates.js        dates en hora local
   load.js         TRIMP, CTL/ATL/TSB, ACWR, monotonia, projecció, recuperació, estat
@@ -28,6 +32,8 @@ js/data/        emmagatzematge i sincronització
   db.js           IndexedDB: activitats, streams, força, cos, configuració
   migrate.js      migració des de la v1 (només llegeix rt4:*, mai hi escriu)
   strava.js       sincronització amb Strava i anàlisi dels streams en segon pla
+  config.js       Worker, clau de l'app i estat de la sincronització
+  recalc.js       recàlcul de totes les sortides quan canvia la FC
 worker/         Worker de Cloudflare ff-runtracker (token de Strava i còpia)
 tests/          proves del motor i comparació amb la v1
 prototype/      prototip de Força i Cos (es construeix a dist/)
