@@ -2,7 +2,9 @@
 
 import { h, say, fmtInt } from "./dom.js";
 import { todaySummary, bestWindow } from "../engine/today.js";
-import { proteinTarget } from "../engine/body.js";
+import { proteinTarget, bodySummary } from "../engine/body.js";
+import { loadBody, sexOf } from "../data/body.js";
+import { dateStr } from "../engine/dates.js";
 import { getForecast, setLocation, askPosition } from "../data/weather.js";
 import { getSettings } from "../data/config.js";
 import { loadStrength } from "../data/strength.js";
@@ -91,12 +93,15 @@ export async function renderToday(root, app) {
     wxBox, wxMsg));
 
   // ── Proteïna ──
-  const p = proteinTarget(settings.weight);
+  // Pes: la mitjana de 7 dies del Cos; si no n'hi ha, el del Perfil.
+  const bodyW = bodySummary(await loadBody(db), { height: settings.height, sex: sexOf(settings.sex) }, dateStr(new Date(now))).weight;
+  const wUsed = bodyW || settings.weight;
+  const p = proteinTarget(wUsed);
   root.append(h("section.card", { "aria-labelledby": "h-prot" },
     h("div.card-head", h("h2", { id: "h-prot" }, "Proteïna d'avui")),
     p ? [h("p.big", h("b", `${p.g} g`), h("span.muted", ` (${p.lo}–${p.hi} g)`)),
-      h("p.small.muted", `1,6 g per kg amb ${dec(settings.weight)} kg. El pes es posa al Perfil; més endavant vindrà de la pestanya Cos.`)]
-      : h("p.small", "Posa el pes al ", h("a", { href: "#/perfil" }, "Perfil"), " per calcular-la.")));
+      h("p.small.muted", `1,6 g per kg amb ${dec(wUsed)} kg` + (bodyW ? " (mitjana de 7 dies del Cos)." : ". Registra el pes al Cos perquè segueixi la teva tendència."))]
+      : h("p.small", "Registra el pes al ", h("a", { href: "#/cos" }, "Cos"), " per calcular-la.")));
 
   async function paintWx(force = false) {
     let fc;

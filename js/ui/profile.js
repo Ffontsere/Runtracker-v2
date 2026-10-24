@@ -59,7 +59,7 @@ export async function renderProfile(root, app) {
   // ─────────────── Fisiologia ───────────────
   const physMsg = h("div.msg");
   const num = (id, label, unit, attrs) => {
-    const input = h("input.input", { id, type: "number", inputmode: "decimal", ...attrs });
+    const input = h("input.input", { id, type: "text", inputmode: "decimal", autocomplete: "off", ...attrs });
     return { input, el: h("div.field", h("label", { for: id }, label), h("div.unit", input, h("span", unit))) };
   };
   const fMax = num("ph-hrmax", "FC màxima", "ppm", { min: 120, max: 230, step: 1 });
@@ -282,10 +282,11 @@ export async function renderProfile(root, app) {
   const s0 = await getSettings(db);
   fMax.input.value = s0.hrMax ?? ""; fRest.input.value = s0.hrRest ?? "";
   fWeight.input.value = s0.weight ?? ""; fHeight.input.value = s0.height ?? "";
+  const num2 = f => +String(f.input.value).trim().replace(",", ".");
   physBtn.onclick = async () => {
-    const hrMax = Math.round(+fMax.input.value), hrRest = Math.round(+fRest.input.value);
-    const weight = fWeight.input.value === "" ? null : Math.round(+fWeight.input.value * 10) / 10;
-    const height = fHeight.input.value === "" ? null : +fHeight.input.value;
+    const hrMax = Math.round(num2(fMax)), hrRest = Math.round(num2(fRest));
+    const weight = fWeight.input.value.trim() === "" ? null : Math.round(num2(fWeight) * 10) / 10;
+    const height = fHeight.input.value.trim() === "" ? null : num2(fHeight);
     if (!(hrMax >= 120 && hrMax <= 230)) return say(physMsg, "La FC màxima ha d'estar entre 120 i 230.", "bad");
     if (!(hrRest >= 25 && hrRest <= 100 && hrRest < hrMax)) return say(physMsg, "La FC en repòs ha d'estar entre 25 i 100 i per sota de la màxima.", "bad");
     if (weight != null && !(weight >= 30 && weight <= 200)) return say(physMsg, "El pes no sembla correcte.", "bad");

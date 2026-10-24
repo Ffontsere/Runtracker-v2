@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS, parseStravaReturn } from "./data/config.js";
 import { renderProfile } from "./ui/profile.js";
 import { renderToday } from "./ui/today.js";
 import { renderStrength } from "./ui/strength.js";
+import { renderBody } from "./ui/body.js";
 import { h, fmtInt } from "./ui/dom.js";
 import { syncAll } from "./data/sync.js";
 
@@ -62,6 +63,7 @@ export async function start({ win = window, db = null, fetchImpl, now, sleep, ge
     }
     if (name === "avui") return renderToday(root, { db, fetchImpl, now, geo });
     if (name === "forca") return renderStrength(root, { db, now });
+    if (name === "cos") return renderBody(root, { db, now, win });
     placeholder(root, name, await db.count("activities"));
   }
   win.addEventListener("hashchange", () => { show().catch(e => console.error(e)); });

@@ -8,8 +8,8 @@ Redisseny de RunTracker: mòduls JavaScript sense compilació, motor de càlculs
 |---|---|---|
 | 1 | Motor de càlculs portat de la v1 i comparat amb ella | Fet: idèntic a la v47 (la versió en ús) amb dades sintètiques i amb la còpia real de 2.018 sortides |
 | 2 | Dades (IndexedDB), migració des de `rt4:*`, Worker de Cloudflare, sincronització amb Strava | Fet, provat i Worker publicat (ff-runtracker.ffontsere.workers.dev) |
-| 3 | Força i Cos | Força a l'app (sessions a IndexedDB, fatiga real, dies al Perfil). Cos: motor fet, pantalla pendent |
-| 4 | Disseny de les pantalles | En curs: carcassa, Perfil, Avui i Força fets. Publicada a ffontsere.github.io/Runtracker-v2 |
+| 3 | Força i Cos | Fet a l'app, amb còpia automàtica al Worker |
+| 4 | Disseny de les pantalles | En curs: carcassa, Perfil, Avui, Força i Cos fets. Publicada a ffontsere.github.io/Runtracker-v2 |
 | 5 | Prova en paral·lel amb la v1 | Pendent |
 
 ## Estructura
@@ -18,7 +18,7 @@ Redisseny de RunTracker: mòduls JavaScript sense compilació, motor de càlculs
 index.html      l'app (GitHub Pages)
 css/app.css     estil comú, clar i fosc
 js/app.js       arrencada i navegació (#/avui … #/perfil)
-js/ui/          pantalles (profile.js, today.js, strength.js) i ajudes (dom.js)
+js/ui/          pantalles (profile.js, today.js, strength.js, body.js) i ajudes (dom.js)
 js/engine/      càlculs purs, sense pantalla ni emmagatzematge
   dates.js        dates en hora local
   load.js         TRIMP, CTL/ATL/TSB, ACWR, monotonia, projecció, recuperació, estat
@@ -36,6 +36,7 @@ js/data/        emmagatzematge i sincronització
   strava.js       sincronització amb Strava i anàlisi dels streams en segon pla
   config.js       Worker, clau de l'app i estat de la sincronització
   strength.js     sessions de força, esborrany i nivells
+  body.js         mesures del cos
   sync.js         còpia de força, cos i configuració al Worker (combina per id, guanya el més recent)
   weather.js      previsió d'Open-Meteo amb cache d'1 hora
   recalc.js       recàlcul de totes les sortides quan canvia la FC
