@@ -3,6 +3,7 @@
 import { openDB } from "./data/db.js";
 import { DEFAULT_SETTINGS, parseStravaReturn } from "./data/config.js";
 import { renderProfile } from "./ui/profile.js";
+import { renderToday } from "./ui/today.js";
 import { h, fmtInt } from "./ui/dom.js";
 
 export const ROUTES = {
@@ -29,7 +30,7 @@ function placeholder(root, route, count) {
 /**
  * Arrenca l'app. Els paràmetres permeten provar-la amb una base de dades i un fetch de mentida.
  */
-export async function start({ win = window, db = null, fetchImpl, now, sleep } = {}) {
+export async function start({ win = window, db = null, fetchImpl, now, sleep, geo } = {}) {
   const root = win.document.getElementById("view");
   try {
     db = db || await openDB(win.indexedDB);
@@ -56,6 +57,7 @@ export async function start({ win = window, db = null, fetchImpl, now, sleep } =
       const n = notice; notice = null;
       return renderProfile(root, { db, fetchImpl, now, win, sleep, notice: n });
     }
+    if (name === "avui") return renderToday(root, { db, fetchImpl, now, geo });
     placeholder(root, name, await db.count("activities"));
   }
   win.addEventListener("hashchange", () => { show().catch(e => console.error(e)); });
