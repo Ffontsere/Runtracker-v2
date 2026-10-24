@@ -4,3 +4,6 @@ dist/
 tests/private/
 *.backup.json
 NOTES-nit.md
+
+# Clau de l'app generada per worker/setup.mjs
+worker/.app-key

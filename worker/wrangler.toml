@@ -4,10 +4,9 @@ compatibility_date = "2025-09-01"
 
 [vars]
 STRAVA_CLIENT_ID = "220720"
-APP_URL = "https://ffontsere.github.io/runtracker-v2/"
+APP_URL = "https://ffontsere.github.io/Runtracker-v2/"
 
-# KV dels projectes personals (el mateix FF_DATA). Posa-hi l'id del teu namespace:
-#   npx wrangler kv namespace list
+# KV dels projectes personals (el mateix FF_DATA). L'id l'omple sol `node worker/setup.mjs`.
 [[kv_namespaces]]
 binding = "FF_DATA"
 id = "POSA_AQUI_L_ID_DE_FF_DATA"
