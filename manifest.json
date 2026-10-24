@@ -1,0 +1,26 @@
+{
+  "id": "/Runtracker-v2/",
+  "name": "RunTracker v2",
+  "short_name": "RunTracker 2",
+  "description": "Entrenaments de running, força a casa i cos",
+  "lang": "ca",
+  "dir": "ltr",
+  "categories": ["health", "fitness", "sports"],
+  "start_url": "./#/avui",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EDF1EF",
+  "theme_color": "#1D664D",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Força", "url": "./#/forca", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Cos", "url": "./#/cos", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Clima", "url": "./#/clima", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
