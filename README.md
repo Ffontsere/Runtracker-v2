@@ -9,7 +9,7 @@ Redisseny de RunTracker: mòduls JavaScript sense compilació, motor de càlculs
 | 1 | Motor de càlculs portat de la v1 i comparat amb ella | Fet: idèntic a la v47 (la versió en ús) amb dades sintètiques i amb la còpia real de 2.018 sortides |
 | 2 | Dades (IndexedDB), migració des de `rt4:*`, Worker de Cloudflare, sincronització amb Strava | Fet, provat i Worker publicat (ff-runtracker.ffontsere.workers.dev) |
 | 3 | Força i Cos | Fet a l'app, amb còpia automàtica al Worker |
-| 4 | Disseny de les pantalles | Fet: les 6 pestanyes i el Perfil. Publicada a ffontsere.github.io/Runtracker-v2 Publicada a ffontsere.github.io/Runtracker-v2 |
+| 4 | Disseny de les pantalles | Fet: les 6 pestanyes i el Perfil, publicades a ffontsere.github.io/Runtracker-v2 |
 | 5 | Prova en paral·lel amb la v1 | Pendent |
 
 ## Estructura
