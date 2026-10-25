@@ -145,3 +145,12 @@ test("tipus de sortida per al clima: llarga el dia habitual, fàcil la resta, i 
   await renderToday(root, { db, now: () => SUN + 864e5, fetchImpl: async () => new Response(JSON.stringify(fc)) });
   assert.notEqual(root.querySelector('[aria-label="Tipus de sortida"] [aria-pressed="true"]').textContent, "Sèries", "l'endemà torna als hàbits");
 });
+
+test("objectiu setmanal per defecte de 45 km encara que la v1 no l'hagués desat", async () => {
+  const db = await openDB(new IDBFactory());
+  await db.setKV("settings", { hrMax: 176, hrRest: 45 }); // com arriba d'una v1 que feia servir els valors per defecte
+  await db.put("activities", { id: "a1", date: "2026-10-20", distance: 10, duration: 3300, avgHR: 140, trimp: 60, source: "strava" });
+  const root = document.getElementById("view");
+  await renderToday(root, { db, now: () => NOW, fetchImpl: async () => { throw new Error("x"); } });
+  assert.match(root.textContent, /Aquesta setmana.*de 45 km/s);
+});

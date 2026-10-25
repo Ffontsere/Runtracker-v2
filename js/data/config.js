@@ -3,7 +3,8 @@
 // excepte cap al Worker.
 
 export const DEFAULT_WORKER = "https://ff-runtracker.ffontsere.workers.dev";
-export const DEFAULT_SETTINGS = { hrMax: 176, hrRest: 45 };
+// Objectius per defecte: els mateixos que la v1 (DSET), que els aplicava encara que no estiguessin desats.
+export const DEFAULT_SETTINGS = { hrMax: 176, hrRest: 45, weeklyTarget: 45, yearlyGoal: 2200 };
 
 export async function getWorkerConfig(db) {
   const c = await db.getKV("worker");

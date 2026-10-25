@@ -68,11 +68,13 @@ export async function renderProfile(root, app) {
   const fRest = num("ph-hrrest", "FC en repòs", "ppm", { min: 25, max: 100, step: 1 });
   const fWeight = num("ph-weight", "Pes", "kg", { min: 30, max: 200, step: 0.1 });
   const fHeight = num("ph-height", "Alçada", "cm", { min: 120, max: 230, step: 0.5 });
+  const fWeek = num("ph-week", "Objectiu setmanal", "km", {});
+  const fYear = num("ph-year", "Objectiu anual", "km", {});
   const physBtn = h("button.btn", { type: "button" }, "Desa");
   root.append(h("section.card", { "aria-labelledby": "h-phys" },
-    h("div.card-head", h("h2", { id: "h-phys" }, "Fisiologia")),
+    h("div.card-head", h("h2", { id: "h-phys" }, "Fisiologia i objectius")),
     h("p.small.muted", "Si canvies la FC màxima o la de repòs, es recalculen la càrrega, les zones i el VO₂ de totes les sortides."),
-    h("div.grid2", fMax.el, fRest.el, fWeight.el, fHeight.el),
+    h("div.grid2", fMax.el, fRest.el, fWeight.el, fHeight.el, fWeek.el, fYear.el),
     physMsg,
     h("div.row", physBtn)));
 
@@ -287,6 +289,7 @@ export async function renderProfile(root, app) {
   const s0 = await getSettings(db);
   fMax.input.value = s0.hrMax ?? ""; fRest.input.value = s0.hrRest ?? "";
   fWeight.input.value = s0.weight ?? ""; fHeight.input.value = s0.height ?? "";
+  fWeek.input.value = s0.weeklyTarget ?? ""; fYear.input.value = s0.yearlyGoal ?? "";
   const num2 = f => +String(f.input.value).trim().replace(",", ".");
   physBtn.onclick = async () => {
     const hrMax = Math.round(num2(fMax)), hrRest = Math.round(num2(fRest));
@@ -296,11 +299,14 @@ export async function renderProfile(root, app) {
     if (!(hrRest >= 25 && hrRest <= 100 && hrRest < hrMax)) return say(physMsg, "La FC en repòs ha d'estar entre 25 i 100 i per sota de la màxima.", "bad");
     if (weight != null && !(weight >= 30 && weight <= 200)) return say(physMsg, "El pes no sembla correcte.", "bad");
     if (height != null && !(height >= 120 && height <= 230)) return say(physMsg, "L'alçada no sembla correcta.", "bad");
+    const weeklyTarget = Math.round(num2(fWeek)), yearlyGoal = Math.round(num2(fYear));
+    if (!(weeklyTarget >= 5 && weeklyTarget <= 300)) return say(physMsg, "L'objectiu setmanal ha d'estar entre 5 i 300 km.", "bad");
+    if (!(yearlyGoal >= 100 && yearlyGoal <= 15000)) return say(physMsg, "L'objectiu anual ha d'estar entre 100 i 15.000 km.", "bad");
     busy(physBtn, true, "Desant…");
     try {
       const cur = await getSettings(db);
       const hrChanged = cur.hrMax !== hrMax || cur.hrRest !== hrRest;
-      await db.setKV("settings", { ...cur, weight, height });
+      await db.setKV("settings", { ...cur, weight, height, weeklyTarget, yearlyGoal });
       if (hrChanged && dataState.count) {
         say(physMsg, "Recalculant totes les sortides…");
         const r = await recalcAll(db, { hrMax, hrRest, now: now() });
@@ -308,7 +314,7 @@ export async function renderProfile(root, app) {
           (r.pendingStreams ? ` ${fmtInt(r.pendingStreams)} de l'últim any tornen a la cua d'anàlisi.` : ""), "ok");
         await paintData();
       } else {
-        await db.setKV("settings", { ...cur, weight, height, hrMax, hrRest });
+        await db.setKV("settings", { ...cur, weight, height, weeklyTarget, yearlyGoal, hrMax, hrRest });
         say(physMsg, "Desat.", "ok");
         if (!app.noSync) syncSoon(db, { fetchImpl });
       }
