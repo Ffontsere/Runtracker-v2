@@ -42,6 +42,29 @@ Aquest pas el pot fer Claude per tu des del teu Chrome: només cal que li ho dem
 
 La v1 continuarà sincronitzant amb Strava, perquè per renovar el token no necessita aquest domini. L'únic que no podràs fer és tornar a connectar la v1 si la desconnectes.
 
+## Garmin (opcional): HRV, son i FC en repòs
+
+Una Action de GitHub (`.github/workflows/garmin.yml`) baixa les dades de Garmin Connect dos cops al dia i les deixa al Worker. Les dades de salut **no** van mai al repositori (és públic) ni als registres de l'Action: només viuen al KV del Worker. L'app les llegeix amb la clau de l'app.
+
+Fa servir la llibreria **no oficial** `python-garminconnect` (versió fixada). Garmin no té API oberta per a particulars, així que pot deixar de funcionar si canvia el login, i va contra les seves condicions de servei.
+
+Passos, una sola vegada:
+
+1. Torna a executar `node worker/setup.mjs`: publica les rutes noves i crea la clau de l'Action a `worker/.garmin-push-key`.
+2. A GitHub, repositori → *Settings → Secrets and variables → Actions*, crea dos secrets: `RT_WORKER_URL` (l'adreça del Worker) i `GARMIN_PUSH_KEY` (el contingut de `worker/.garmin-push-key`).
+3. A l'ordinador (Python 3.12 o superior), inicia sessió a Garmin una vegada. Et demana el correu, la contrasenya i el codi de verificació si el tens activat. La contrasenya no es desa enlloc; al Worker només hi queden els tokens:
+   ```
+   python3 -m venv .venv && source .venv/bin/activate
+   pip install "garminconnect==0.3.20" curl_cffi
+   python scripts/garmin_login.py
+   ```
+4. A GitHub → *Actions → Garmin sync → Run workflow*, amb `days` = 120 per omplir l'historial (la base d'HRV i FC en repòs necessita almenys 7 dies; 28 és el ideal).
+5. Mira el registre: diu quants dies i quins camps ha trobat, sense mostrar-ne els valors. Si algun camp surt a zero, Garmin ha enviat un format que l'extractor (`scripts/garmin_extract.py`) no coneix: és l'únic lloc que cal ajustar.
+
+Després, l'app mostra la targeta «Recuperació» a Avui. No canvia l'Estat d'entrenament.
+
+Per treure-ho: esborra els secrets de GitHub i, si vols, `GARMIN_PUSH_KEY` del Worker (`npx wrangler secret delete GARMIN_PUSH_KEY`). Pots revocar l'accés des del teu compte de Garmin.
+
 ## Si cal canviar la clau de l'app
 
 ```
@@ -71,6 +94,9 @@ Genera una clau nova i deixa d'acceptar l'anterior. Després l'has d'actualitzar
 | `POST /strava/token` | l'app | dona un token d'accés vàlid (el renova si cal) |
 | `POST /strava/disconnect` | l'app | esborra els tokens |
 | `GET/PUT /sync/<col>` | l'app | llegeix o desa una col·lecció; respon 409 si un altre mòbil l'ha canviada |
+| `GET /garmin/wellness` | l'app | benestar de Garmin (HRV, son, FC en repòs…) per dia |
+| `PUT /garmin/wellness` | l'Action (`GARMIN_PUSH_KEY`) | afegeix dies; només es desen els camps coneguts i els últims 400 dies |
+| `GET/PUT /garmin/tokens` | l'Action (`GARMIN_PUSH_KEY`) | tokens de Garmin; l'app no els veu mai |
 
 Totes les rutes de l'app demanen `Authorization: Bearer <clau de l'app>` i només accepten l'origen de `APP_URL`.
 

@@ -132,3 +132,67 @@ test("CORS només per a l'app i error clar si falta configuració", async () => 
   assert.equal(e.status, 500);
   assert.match((await e.json()).message, /STRAVA_CLIENT_SECRET/);
 });
+
+// ── Garmin ──
+const PUSH = "clau-de-l-action-molt-llarga-9876543210";
+const withPush = () => { env.GARMIN_PUSH_KEY = PUSH; };
+
+test("Garmin: sense GARMIN_PUSH_KEY les rutes d'escriptura no existeixen", async () => {
+  const r = await call("/garmin/wellness", { method: "PUT", key: PUSH, body: { days: {} } });
+  assert.equal(r.status, 404); assert.equal((await r.json()).error, "garmin_off");
+});
+
+test("Garmin: la clau de l'app no serveix per escriure ni per llegir els tokens, i la de l'Action no serveix per a la resta", async () => {
+  withPush();
+  assert.equal((await call("/garmin/wellness", { method: "PUT", key: APP_KEY, body: { days: {} } })).status, 401);
+  assert.equal((await call("/garmin/tokens", { key: APP_KEY })).status, 401);
+  assert.equal((await call("/garmin/tokens", { key: null })).status, 401);
+  assert.equal((await call("/garmin/wellness", { key: PUSH })).status, 401, "llegir benestar és per a l'app");
+  assert.equal((await call("/sync/body", { key: PUSH })).status, 401, "la clau de l'Action no obre la resta");
+  assert.equal((await call("/strava/token", { method: "POST", key: PUSH })).status, 401);
+});
+
+test("Garmin: l'Action escriu benestar, es combina per dia i l'app el llegeix", async () => {
+  withPush();
+  assert.deepEqual(await (await call("/garmin/wellness")).json(), { days: {}, updatedAt: null });
+  const p1 = await call("/garmin/wellness", { method: "PUT", key: PUSH, body: { days: {
+    "2026-10-30": { rhr: 46, hrvLast: 62.456, hrvStatus: "BALANCED", sleepSec: 27000, sleepScore: 81, inventat: 9 },
+    "2026-10-31": { rhr: 47 }, "no-es-data": { rhr: 1 }, "2026-10-29": { cosa: 1 },
+  } } });
+  assert.deepEqual(await p1.json(), { accepted: 2, total: 2, updatedAt: NOW });
+  await call("/garmin/wellness", { method: "PUT", key: PUSH, body: { days: { "2026-10-31": { hrvLast: 58, bbWake: 74 } } } });
+  const g = await (await call("/garmin/wellness")).json();
+  assert.deepEqual(g.days["2026-10-30"], { rhr: 46, hrvLast: 62.46, hrvStatus: "BALANCED", sleepSec: 27000, sleepScore: 81 });
+  assert.deepEqual(g.days["2026-10-31"], { rhr: 47, hrvLast: 58, bbWake: 74 }, "ajunta camps del mateix dia");
+  assert.equal(g.updatedAt, NOW);
+  assert.equal(g.days["no-es-data"], undefined);
+});
+
+test("Garmin: només es guarden els últims 400 dies", async () => {
+  withPush();
+  const days = {};
+  for (let i = 0; i < 450; i++) days[new Date(Date.UTC(2025, 0, 1) + i * 864e5).toISOString().slice(0, 10)] = { rhr: 40 + (i % 10) };
+  await call("/garmin/wellness", { method: "PUT", key: PUSH, body: { days } });
+  const g = await (await call("/garmin/wellness")).json();
+  const keys = Object.keys(g.days);
+  assert.equal(keys.length, 400);
+  assert.equal(keys.at(-1), "2026-03-26");
+});
+
+test("Garmin: peticions mal formades es refusen", async () => {
+  withPush();
+  assert.equal((await call("/garmin/wellness", { method: "PUT", key: PUSH, body: { dies: {} } })).status, 400);
+  assert.equal((await call("/garmin/wellness", { method: "PUT", key: PUSH, body: { days: [] } })).status, 400);
+  assert.equal((await call("/garmin/tokens", { method: "PUT", key: PUSH, body: { tokens: "curt" } })).status, 400);
+});
+
+test("Garmin: els tokens van i tornen només per a l'Action", async () => {
+  withPush();
+  assert.equal((await call("/garmin/tokens", { key: PUSH })).status, 404, "encara no n'hi ha");
+  const tokens = JSON.stringify({ di_token: "abc", di_refresh_token: "def" });
+  assert.deepEqual(await (await call("/garmin/tokens", { method: "PUT", key: PUSH, body: { tokens } })).json(), { updatedAt: NOW });
+  assert.deepEqual(await (await call("/garmin/tokens", { key: PUSH })).json(), { tokens, updatedAt: NOW });
+  // I l'app no els veu mai, ni dins del benestar.
+  const g = JSON.stringify(await (await call("/garmin/wellness")).json());
+  assert.ok(!g.includes("di_token"));
+});

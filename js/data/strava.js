@@ -39,6 +39,8 @@ export function workerClient({ url, appKey, fetchImpl = fetch }) {
       throw new SyncError("worker", body.message || "Error del Worker (" + status + ").");
     },
     async disconnect() { return call("/strava/disconnect", { method: "POST" }); },
+    /** Benestar de Garmin (HRV, son, FC en repòs…) que hi ha deixat l'Action de GitHub. */
+    async wellness() { return call("/garmin/wellness"); },
     async syncGet(col) { const { status, body } = await call("/sync/" + col); if (status !== 200) throw new SyncError("worker", body.message || "Error " + status); return body; },
     async syncPut(col, value, baseVersion) { return call("/sync/" + col, { method: "PUT", body: JSON.stringify({ value, baseVersion }) }); },
   };

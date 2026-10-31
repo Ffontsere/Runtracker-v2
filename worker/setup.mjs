@@ -17,6 +17,7 @@ import { dirname, join } from "node:path";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TOML = join(HERE, "wrangler.toml");
 const KEY_FILE = join(HERE, ".app-key");
+const PUSH_FILE = join(HERE, ".garmin-push-key");
 export const WRANGLER = process.env.RT_WRANGLER || "npx --yes wrangler@4.149.0";
 const say = (...a) => console.log(...a);
 const ok = s => say("  ✓ " + s);
@@ -133,6 +134,15 @@ export async function main(argv = process.argv.slice(2)) {
     writeFileSync(KEY_FILE, appKey + "\n");
     ok("Clau de l'app nova generada i desada");
   } else ok("La clau de l'app ja hi era: no la canvio");
+  // Clau de l'Action de GitHub que baixa les dades de Garmin: només pot escriure benestar i llegir/escriure els tokens de Garmin.
+  let pushKey = existsSync(PUSH_FILE) ? readFileSync(PUSH_FILE, "utf8").trim() : null;
+  if (!have.has("GARMIN_PUSH_KEY") || !pushKey) {
+    pushKey = randomBytes(32).toString("hex");
+    const r = wrangler("secret put GARMIN_PUSH_KEY", { input: pushKey + "\n" });
+    if (r.code !== 0) throw new SetupError("No s'ha pogut desar GARMIN_PUSH_KEY:\n" + r.out.slice(0, 400));
+    writeFileSync(PUSH_FILE, pushKey + "\n");
+    ok("Clau de l'Action de Garmin generada i desada");
+  } else ok("La clau de l'Action de Garmin ja hi era");
   if (!have.has("STRAVA_CLIENT_SECRET")) {
     say("  Copia el «Client Secret» de https://www.strava.com/settings/api (botó «Show»).");
     const secret = await askHidden("  Enganxa'l aquí i prem Enter: ");
@@ -154,7 +164,7 @@ export async function main(argv = process.argv.slice(2)) {
   const host = new URL(url).host;
   say(`
 ────────────────────────────────────────────────────────────
-Fet. Queden dues coses, i la primera la puc fer jo:
+Fet. Queden unes coses, i la primera la puc fer jo:
 
 1. A https://www.strava.com/settings/api, «Authorization Callback Domain»:
      ${host}
@@ -163,6 +173,10 @@ Fet. Queden dues coses, i la primera la puc fer jo:
      Adreça del Worker: ${url}
      Clau de l'app:     ${appKey}
    (La clau també és a worker/.app-key, que no es puja a GitHub.)
+
+3. Només per a Garmin: com a secrets del repositori a GitHub (Settings → Secrets and variables → Actions):
+     RT_WORKER_URL       ${url}
+     GARMIN_PUSH_KEY     el contingut de worker/.garmin-push-key
 ────────────────────────────────────────────────────────────`);
   return { url, appKey, kvId: id };
 }

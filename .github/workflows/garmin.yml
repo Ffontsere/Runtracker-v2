@@ -1,0 +1,40 @@
+name: Garmin sync
+
+# Baixa HRV, son, FC en repòs, Body Battery, etc. de Garmin Connect i ho envia al Worker privat de RunTracker.
+# Secrets del repositori (Settings → Secrets and variables → Actions): RT_WORKER_URL i GARMIN_PUSH_KEY.
+# Abans, una sola vegada a l'ordinador:  python scripts/garmin_login.py   (veure worker/README.md)
+
+on:
+  schedule:
+    - cron: "40 5 * * *"
+    - cron: "40 17 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Quants dies enrere (3 al dia; fins a 400 per omplir l'historial la primera vegada)"
+        default: "3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: garmin-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Versió fixa: aquest procés té la clau del Worker i els tokens de Garmin. Si Garmin canvia el login i deixa de
+      # funcionar, puja-la a mà després de mirar què ha canviat.
+      - run: pip install "garminconnect==0.3.20" curl_cffi
+      - run: python scripts/garmin_sync.py
+        env:
+          RT_WORKER_URL: ${{ secrets.RT_WORKER_URL }}
+          GARMIN_PUSH_KEY: ${{ secrets.GARMIN_PUSH_KEY }}
+          DAYS: ${{ inputs.days || '3' }}

@@ -10,11 +10,14 @@
 //   STRAVA_CLIENT_ID      id públic de l'app de Strava
 //   STRAVA_CLIENT_SECRET  secret (wrangler secret put)
 //   APP_KEY               clau llarga i aleatòria que l'app envia a cada petició (wrangler secret put)
+//   GARMIN_PUSH_KEY       (opcional) clau de l'Action de GitHub que baixa les dades de Garmin. Només serveix per
+//                         escriure benestar i llegir/escriure els tokens de Garmin; no obre res més (wrangler secret put)
 //   APP_URL               on torna després de connectar, p. ex. https://ffontsere.github.io/runtracker-v2/
 //   FF_DATA               KV dels projectes personals. Claus amb el prefix "runtracker:".
 
 const P = "runtracker:";
-const K = { tokens: P + "strava:tokens", state: s => P + "strava:state:" + s, sync: c => P + "sync:" + c };
+const K = { tokens: P + "strava:tokens", state: s => P + "strava:state:" + s, sync: c => P + "sync:" + c,
+  gWellness: P + "garmin:wellness", gTokens: P + "garmin:tokens" };
 export const SYNC_COLLECTIONS = ["strength", "body", "strengthState", "settings", "actNotes"];
 const STRAVA_AUTH = "https://www.strava.com/oauth/authorize";
 const STRAVA_TOKEN = "https://www.strava.com/oauth/token";
@@ -144,6 +147,78 @@ async function syncPut(req, env, col, now) {
   return json(env, 200, { version: next.version, updatedAt: now });
 }
 
+// ── Garmin ──
+// Les dades de salut no poden anar a un fitxer del repositori (és públic). L'Action de GitHub les envia aquí,
+// i l'app les llegeix amb la clau de l'app. Els tokens de Garmin només els veu l'Action.
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** Camps de benestar que es desen (tot el que no hi sigui es descarta). Nombres, excepte els marcats com a text. */
+export const WELLNESS_FIELDS = {
+  rhr: "n", hrvLast: "n", hrvWeekly: "n", hrvStatus: "s", sleepSec: "n", sleepScore: "n",
+  bbHigh: "n", bbLow: "n", bbWake: "n", stressAvg: "n", readiness: "n", readinessLevel: "s",
+  weight: "n", vo2max: "n", lt2hr: "n", steps: "n",
+};
+export const WELLNESS_MAX_DAYS = 400;
+
+function sanitizeDay(d) {
+  const out = {};
+  if (!d || typeof d !== "object") return out;
+  for (const [k, kind] of Object.entries(WELLNESS_FIELDS)) {
+    const v = d[k];
+    if (kind === "n" && typeof v === "number" && Number.isFinite(v)) out[k] = Math.round(v * 100) / 100;
+    if (kind === "s" && typeof v === "string" && v.length <= 40) out[k] = v;
+  }
+  return out;
+}
+
+/** Només l'Action (clau GARMIN_PUSH_KEY). Si no està configurada, aquestes rutes no existeixen. */
+function pushAuth(req, env) {
+  if (!env.GARMIN_PUSH_KEY) return fail(env, 404, "garmin_off", "Garmin no està configurat al Worker (falta GARMIN_PUSH_KEY).");
+  if (!sameKey(bearer(req), env.GARMIN_PUSH_KEY)) return fail(env, 401, "unauthorized", "Clau de l'Action incorrecta.");
+  return null;
+}
+
+async function wellnessGet(env) {
+  const raw = await env.FF_DATA.get(K.gWellness);
+  return json(env, 200, raw ? JSON.parse(raw) : { days: {}, updatedAt: null });
+}
+
+/** Ajunta dies nous als que ja hi ha (mana el més recent per dia) i guarda els últims WELLNESS_MAX_DAYS. */
+async function wellnessPut(req, env, now) {
+  let body;
+  try { body = await req.json(); } catch { return fail(env, 400, "bad_json", "El cos no és JSON vàlid."); }
+  if (!body || typeof body.days !== "object" || body.days === null || Array.isArray(body.days)) return fail(env, 400, "bad_request", "Cal { days: { 'AAAA-MM-DD': {...} } }.");
+  const entries = Object.entries(body.days);
+  if (entries.length > 800) return fail(env, 413, "too_large", "Massa dies en una sola petició.");
+  const raw = await env.FF_DATA.get(K.gWellness);
+  const cur = raw ? JSON.parse(raw) : { days: {}, updatedAt: null };
+  let accepted = 0;
+  for (const [day, vals] of entries) {
+    if (!DAY_RE.test(day)) continue;
+    const clean = sanitizeDay(vals);
+    if (!Object.keys(clean).length) continue;
+    cur.days[day] = { ...(cur.days[day] || {}), ...clean };
+    accepted++;
+  }
+  const keep = Object.keys(cur.days).sort().slice(-WELLNESS_MAX_DAYS);
+  cur.days = Object.fromEntries(keep.map(d => [d, cur.days[d]]));
+  cur.updatedAt = now;
+  await env.FF_DATA.put(K.gWellness, JSON.stringify(cur));
+  return json(env, 200, { accepted, total: keep.length, updatedAt: now });
+}
+
+async function garminTokensGet(env) {
+  const raw = await env.FF_DATA.get(K.gTokens);
+  if (!raw) return fail(env, 404, "no_tokens", "Encara no hi ha tokens de Garmin. Executa scripts/garmin_login.py.");
+  return json(env, 200, JSON.parse(raw));
+}
+async function garminTokensPut(req, env, now) {
+  let body;
+  try { body = await req.json(); } catch { return fail(env, 400, "bad_json", "El cos no és JSON vàlid."); }
+  if (!body || typeof body.tokens !== "string" || body.tokens.length < 20 || body.tokens.length > 20_000) return fail(env, 400, "bad_request", "Cal { tokens: '<text>' }.");
+  await env.FF_DATA.put(K.gTokens, JSON.stringify({ tokens: body.tokens, updatedAt: now }));
+  return json(env, 200, { updatedAt: now });
+}
+
 export default {
   async fetch(req, env, _ctx, now = Date.now()) {
     try {
@@ -155,10 +230,21 @@ export default {
       if (req.method === "GET" && path === "/strava/connect") return connect(req, env);
       if (req.method === "GET" && path === "/strava/callback") return callback(req, env);
 
+      // Garmin, escriptura i tokens: només amb la clau de l'Action (no amb la de l'app).
+      if (path === "/garmin/tokens" && (req.method === "GET" || req.method === "PUT")) {
+        const bad = pushAuth(req, env); if (bad) return bad;
+        return req.method === "GET" ? garminTokensGet(env) : garminTokensPut(req, env, now);
+      }
+      if (path === "/garmin/wellness" && req.method === "PUT") {
+        const bad = pushAuth(req, env); if (bad) return bad;
+        return wellnessPut(req, env, now);
+      }
+
       // A partir d'aquí, cal la clau de l'app.
       if (!sameKey(bearer(req), env.APP_KEY)) return fail(env, 401, "unauthorized", "Clau de l'app incorrecta.");
       if (req.method === "POST" && path === "/strava/token") return token(req, env, now);
       if (req.method === "POST" && path === "/strava/disconnect") return disconnect(req, env);
+      if (req.method === "GET" && path === "/garmin/wellness") return wellnessGet(env);
       const m = path.match(/^\/sync\/([A-Za-z]+)$/);
       if (m) {
         if (!SYNC_COLLECTIONS.includes(m[1])) return fail(env, 404, "unknown_collection", "Col·lecció desconeguda.");

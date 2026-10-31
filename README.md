@@ -33,6 +33,7 @@ js/engine/      càlculs purs, sense pantalla ni emmagatzematge
   climate.js      millor hora de cada dia, hora a hora, sortides sense el temps del dia
   schedule.js     quina sessió de força toca, setmanes regulars, dia de la llarga
   today.js        resum d'Avui i millor hora per córrer
+  wellness.js     senyals de Garmin (HRV, FC en repòs, son) contra la teva base de 28 dies; no toca l'Estat
   easy.js         TRIMP recomanat per a una sessió fàcil: sessió mitjana × fracció segons l'estat, amb límit d'ACWR 1,3
   derive.js       mètriques que surten dels streams (TRIMP exacte, zones, VO₂, deriva)
 js/data/        emmagatzematge i sincronització
@@ -45,8 +46,11 @@ js/data/        emmagatzematge i sincronització
   notes.js        RPE, sensacions, cursa i temperatura de cada sortida (viatgen a la còpia)
   sync.js         còpia de força, cos i configuració al Worker (combina per id, guanya el més recent)
   weather.js      previsió d'Open-Meteo amb cache d'1 hora
+  garmin.js       baixa el benestar de Garmin del Worker i el desa al mòbil
   recalc.js       recàlcul de totes les sortides quan canvia la FC
-worker/         Worker de Cloudflare ff-runtracker (token de Strava i còpia)
+worker/         Worker de Cloudflare ff-runtracker (token de Strava, còpia i benestar de Garmin)
+scripts/        Python de Garmin: garmin_login.py (una vegada), garmin_sync.py (Action) i garmin_extract.py
+.github/        Action «Garmin sync» (veure worker/README.md)
 tests/          proves del motor i comparació amb la v1
 prototype/      prototip de Força i Cos (es construeix a dist/)
 BUGS-v1.md      el que s'ha trobat a la v1 en portar-la

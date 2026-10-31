@@ -7,10 +7,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const TOML = join(ROOT, "worker/wrangler.toml"), KEY = join(ROOT, "worker/.app-key");
+const TOML = join(ROOT, "worker/wrangler.toml"), KEY = join(ROOT, "worker/.app-key"), PUSH = join(ROOT, "worker/.garmin-push-key");
 const STATE = join(mkdtempSync(join(tmpdir(), "rt-setup-")), "state.json");
 const SECRET = "0123456789abcdef0123456789abcdef01234567";
-let tomlBackup, keyBackup, setup, worker, realFetch;
+let tomlBackup, keyBackup, pushBackup, setup, worker, realFetch;
 
 const state = () => JSON.parse(readFileSync(STATE, "utf8"));
 const kvStore = new Map();
@@ -18,6 +18,7 @@ const kvStore = new Map();
 before(async () => {
   tomlBackup = readFileSync(TOML, "utf8");
   keyBackup = existsSync(KEY) ? readFileSync(KEY, "utf8") : null;
+  pushBackup = existsSync(PUSH) ? readFileSync(PUSH, "utf8") : null;
   writeFileSync(STATE, JSON.stringify({ logged: false, secrets: {}, kv: [{ id: "a".repeat(32), title: "LKN_DATA" }, { id: "b".repeat(32), title: "FF_DATA" }] }));
   process.env.RT_WRANGLER = `"${process.execPath}" "${join(ROOT, "tests/fixtures/fake-wrangler.mjs")}"`;
   process.env.FAKE_WRANGLER_STATE = STATE;
@@ -38,6 +39,7 @@ before(async () => {
 after(() => {
   writeFileSync(TOML, tomlBackup);
   if (keyBackup === null) rmSync(KEY, { force: true }); else writeFileSync(KEY, keyBackup);
+  if (pushBackup === null) rmSync(PUSH, { force: true }); else writeFileSync(PUSH, pushBackup);
   globalThis.fetch = realFetch;
 });
 
@@ -53,6 +55,9 @@ test("primera vegada: inicia sessió, troba FF_DATA, publica, desa secrets i com
   assert.equal(s.secrets.APP_KEY, r.appKey);
   assert.equal(s.secrets.STRAVA_CLIENT_SECRET, SECRET);
   assert.equal(readFileSync(KEY, "utf8").trim(), r.appKey);
+  assert.match(s.secrets.GARMIN_PUSH_KEY, /^[0-9a-f]{64}$/, "clau de l'Action de Garmin");
+  assert.equal(readFileSync(PUSH, "utf8").trim(), s.secrets.GARMIN_PUSH_KEY);
+  assert.notEqual(s.secrets.GARMIN_PUSH_KEY, s.secrets.APP_KEY, "són claus diferents");
 });
 
 test("segona vegada: no torna a iniciar sessió ni canvia la clau", async () => {
@@ -61,7 +66,8 @@ test("segona vegada: no torna a iniciar sessió ni canvia la clau", async () => 
   const s = state();
   assert.equal(s.calls.filter(c => c === "login").length, 1);
   assert.equal(r.appKey, before.secrets.APP_KEY);
-  assert.equal(s.calls.filter(c => c.startsWith("secret put")).length, 2, "no torna a desar cap secret");
+  assert.equal(s.calls.filter(c => c.startsWith("secret put")).length, 3, "no torna a desar cap secret");
+  assert.equal(s.secrets.GARMIN_PUSH_KEY, before.secrets.GARMIN_PUSH_KEY, "la clau de l'Action tampoc canvia");
 });
 
 test("--clau-nova en genera una de nova i el Worker l'accepta", async () => {

@@ -7,6 +7,8 @@ import { loadBody, sexOf } from "../data/body.js";
 import { dateStr } from "../engine/dates.js";
 import { getForecast, setLocation, askPosition } from "../data/weather.js";
 import { getSettings } from "../data/config.js";
+import { loadWellness, pullWellness } from "../data/garmin.js";
+import { wellnessSummary, wellnessAdvice } from "../engine/wellness.js";
 import { loadStrength } from "../data/strength.js";
 import { nextSession, strengthDaily, strengthContext, runTypeFor } from "../engine/schedule.js";
 import { WXW } from "../engine/weather.js";
@@ -61,6 +63,31 @@ export async function renderToday(root, app) {
         h("div.stat", h("b", dec(s.ctl)), h("span", "Fitness (CTL)"))),
       s.ctlDelta28 == null ? null : h("p.small.muted", `El fitness ${s.ctlDelta28 > 0 ? "puja" : s.ctlDelta28 < 0 ? "baixa" : "es manté"}: ${sign(s.ctlDelta28) || "0"} en les últimes 4 setmanes.`)));
   }
+
+  // ── Recuperació (Garmin) ──
+  // Opcional: només surt si l'Action de Garmin ha deixat dades. Es pinta amb el que hi ha al mòbil i, en segon pla,
+  // es baixa el més nou i es repinta. Mai bloqueja ni canvia l'Estat de dalt.
+  const wellBox = h("div");
+  root.append(wellBox);
+  const hm = sec => `${Math.floor(sec / 3600)} h ${String(Math.round(sec % 3600 / 60)).padStart(2, "0")}`;
+  const paintWellness = w => {
+    const ws = wellnessSummary(w, now);
+    if (!ws) { wellBox.replaceChildren(); return; }
+    const row = x => {
+      const val = x.key === "sleep" ? hm(x.value) + (x.score != null ? ` · ${x.score}` : "") : `${fmtInt(x.value)}${x.unit ? " " + x.unit : ""}`;
+      const note = x.base != null ? ` · habitual ${fmtInt(x.base)}` : "";
+      return h("div.stat", { dataset: { tone: x.tone } }, h("b", val), h("span", x.label + note + (x.level && x.level !== "normal" && x.key !== "readiness" ? ` (${x.level})` : x.key === "readiness" && x.level ? ` (${String(x.level).toLowerCase()})` : "")));
+    };
+    wellBox.replaceChildren(h("section.card", { "aria-labelledby": "h-well", dataset: { tone: ws.stale ? "" : ws.tone } },
+      h("div.card-head", h("h2", { id: "h-well" }, "Recuperació"),
+        h("span.small.muted", ws.stale ? `Dades de fa ${ws.ageDays} dies` : "Garmin")),
+      h("div.stats", ...ws.signals.map(row)),
+      ws.stale ? h("p.small.muted", "Les últimes dades de Garmin són velles: mira que l'Action «Garmin sync» funcioni a GitHub.")
+        : h("p.small", wellnessAdvice(ws)),
+      h("p.small.muted", "És una lectura a part: no canvia l'Estat d'entrenament.")));
+  };
+  paintWellness(await loadWellness(db));
+  pullWellness(db, { fetchImpl, now }).then(async r => { if (r.ok && r.changed) paintWellness(await loadWellness(db)); }).catch(() => {});
 
   // ── Sessió fàcil ──
   if (s.easy) {
