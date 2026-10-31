@@ -3,6 +3,7 @@
 import { dateStr, weekKey, daysAgo } from "./dates.js";
 import { calcFF, ffNow, estRecovery, trainingStatus } from "./load.js";
 import { wxWindowScore, wxCat } from "./weather.js";
+import { easyTrimp } from "./easy.js";
 
 /** Estat, forma, setmana, recuperació i última sortida. */
 export function todaySummary(ctx) {
@@ -21,6 +22,7 @@ export function todaySummary(ctx) {
   const past = ff.length > 29 ? ff[ff.length - 30] : null;
   return {
     status,
+    easy: easyTrimp(ctx),
     ctl: fn ? fn.ctl : null, atl: fn ? fn.atl : null, tsb: fn ? fn.tsb : null,
     ctlDelta28: fn && past ? Math.round((fn.ctl - past.ctl) * 10) / 10 : null,
     week: { km, runs: week.length, target, pct: target ? Math.round(km / target * 100) : null },

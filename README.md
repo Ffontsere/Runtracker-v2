@@ -33,6 +33,7 @@ js/engine/      càlculs purs, sense pantalla ni emmagatzematge
   climate.js      millor hora de cada dia, hora a hora, sortides sense el temps del dia
   schedule.js     quina sessió de força toca, setmanes regulars, dia de la llarga
   today.js        resum d'Avui i millor hora per córrer
+  easy.js         TRIMP recomanat per a una sessió fàcil: sessió mitjana × fracció segons l'estat, amb límit d'ACWR 1,3
   derive.js       mètriques que surten dels streams (TRIMP exacte, zones, VO₂, deriva)
 js/data/        emmagatzematge i sincronització
   db.js           IndexedDB: activitats, streams, força, cos, configuració

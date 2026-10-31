@@ -7,8 +7,16 @@ export const dateStr = d => {
   return z.toISOString().slice(0, 10);
 };
 
-/** Dies sencers des d'una data fins a `now` (ms). v1: dS, que feia servir Date.now(). */
-export const daysAgo = (ds, now) => Math.floor((now - new Date(ds).getTime()) / 864e5);
+/**
+ * Dies de calendari des d'una data 'AAAA-MM-DD' fins al dia local de `now` (ms). 0 = avui.
+ * La v1 (dS) comptava des de la mitjanit UTC: entre les 00:00 i les 02:00 (01:00 a l'hivern)
+ * una sortida d'avui sortia amb -1 dies (BUGS-v1 #8).
+ */
+export const daysAgo = (ds, now) => {
+  const [y, m, d] = String(ds).slice(0, 10).split("-").map(Number);
+  const n = new Date(now);
+  return Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) - Date.UTC(y, m - 1, d)) / 864e5);
+};
 
 /** Dilluns de la setmana d'una data (v1: wK). */
 export const weekKey = d => {

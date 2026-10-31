@@ -30,3 +30,15 @@ Els punts 1 i 2 són els que canvien més el que veus. Els altres són detalls.
 ## Corregit a la v2 (pestanya Clima, 24/10/2026)
 
 - **Hora de la temperatura de cada sortida:** `fetchActTemp` feia `new Date(a.startTime).getHours()`, però Strava dona l'hora local amb una «Z» al final. El navegador la llegia com a UTC i a Barcelona agafava la temperatura de 2 hores més tard a l'estiu (1 a l'hivern). La v2 llegeix l'hora directament de la cadena (`js/data/weather.js`, `fetchActivityWx`). Les temperatures ja desades a la v1 no es tornen a demanar.
+
+## Corregits a la v2 (càrrega, 31/10/2026)
+
+Cada punt té el seu test a `tests/bugs-v1.test.js`.
+
+- **#4 Dos estats d'entrenament:** s'ha tret `getStatus` (tendència del CTL), que cap pantalla de la v2 feia servir. Només queda `trainingStatus` (TSB i ACWR). La comparació amb la v1 a `equivalence.test.js` ja no inclou `getStatus`.
+- **#6 Monotonia de 28 dies:** `calcMonotony` filtra `< 28`, així el dia 28 ja no hi entra com a 29è dia. La comparació amb la v1 es fa contra la v1 sense les sortides d'aquell dia.
+- **#8 Dies en hora local:** `daysAgo` compta dies de calendari en hora local. Abans, entre les 00:00 i les 02:00 (01:00 a l'hivern) una sortida d'avui sortia amb -1 dies i quedava fora de l'ACWR i del CTL fins que passava aquesta hora. Només canvia el resultat dins d'aquesta franja.
+
+- **#5 Easy TRIMP recomanat:** creat a `js/engine/easy.js` i mostrat a Avui (targeta «Sessió fàcil d'avui»). Rang = sessió mitjana de les últimes 4 setmanes (CTL × 7 entre els dies que has sortit) × una fracció que depèn de l'estat (`EASY_FRACTION`: fresc 70–100 %, assimilant 60–90 %, carregat 50–75 %, sobrecarregat 30–50 %), limitat perquè l'ACWR de després no passi d'1,3. Si ja hi passa, diu «Millor descansar». Els minuts surten del TRIMP per minut a la meitat de la teva Z2. Els percentatges són una heurística, per calibrar amb l'historial.
+
+Nota sobre el #8: hi ha altres comptes de dies amb `Date.parse(a.date)` (finestres de 365 dies a `migrate.js` i `strava.js`, i la finestra de `climate.js`). Només es desvien unes hores a la vora del límit, així que no s'han tocat.

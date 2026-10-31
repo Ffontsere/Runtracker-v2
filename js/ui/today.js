@@ -62,6 +62,23 @@ export async function renderToday(root, app) {
       s.ctlDelta28 == null ? null : h("p.small.muted", `El fitness ${s.ctlDelta28 > 0 ? "puja" : s.ctlDelta28 < 0 ? "baixa" : "es manté"}: ${sign(s.ctlDelta28) || "0"} en les últimes 4 setmanes.`)));
   }
 
+  // ── Sessió fàcil ──
+  if (s.easy) {
+    const e = s.easy;
+    const rest = e.hi <= 0;
+    const range = e.lo >= e.hi ? fmtInt(e.hi) : `${fmtInt(e.lo)}–${fmtInt(e.hi)}`;
+    root.append(h("section.card", { "aria-labelledby": "h-easy" },
+      h("div.card-head", h("h2", { id: "h-easy" }, "Sessió fàcil d'avui"), h("span.small.muted", "TRIMP recomanat")),
+      rest ? h("p.big", h("b", "Millor descansar"))
+        : h("p.big", h("b", range), e.minHi ? h("span.muted", ` · uns ${e.minLo === e.minHi ? e.minHi : e.minLo + "–" + e.minHi} min a Z2`) : null),
+      h("p.small.muted",
+        (e.doneToday ? `Avui ja portes ${fmtInt(e.doneToday)} de TRIMP. ` : "") +
+        (rest ? "Amb la càrrega d'aquests dies, una sessió més deixaria l'ACWR per sobre d'1,3. "
+          : e.capped ? "El límit és l'ACWR: passar-te'n el deixaria per sobre d'1,3. " : "") +
+        (e.z2hi && !rest ? `Per sota de ${e.z2hi} ppm. ` : "") +
+        `Surt d'una sessió teva mitjana (${fmtInt(e.session)}) segons com estàs avui.`)));
+  }
+
   // ── Força ──
   const ns = nextSession(sessions, settings, now);
   if (ns.due || ns.doneToday) {

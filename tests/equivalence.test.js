@@ -78,11 +78,11 @@ for (const { name, data, nows } of DATASETS) for (const nowLocal of nows) {
     same(ff, v1("calcFF()"), "calcFF");
     same(L.ffNow(ff), v1("ffNow(calcFF())"), "ffNow");
     same(L.calcACWR(ctx), v1("calcACWR()"), "calcACWR");
-    same(L.calcMonotony(ctx), v1("calcMonotony()"), "calcMonotony");
+    // BUGS-v1 #6: la v1 deixava entrar el dia 28 a la monotonia. Comparem amb la v1 sense les sortides d'aquell dia.
+    same(L.calcMonotony(ctx), v1("(()=>{const s=acts;acts=acts.filter(a=>dS(a.date)<28);try{return calcMonotony()}finally{acts=s}})()"), "calcMonotony");
     same(L.projectFitness(ff, 14, 55), v1("projectFitness(calcFF(),14,55)"), "projectFitness");
     same(L.estRecovery(ctx), v1("estRecovery()"), "estRecovery");
-    const s1 = v1("getStatus(calcFF())"), s2 = L.getStatus(ctx, ff);
-    same([s2.s, s2.d], [s1.s, s1.d], "getStatus");
+    // getStatus (v1) ja no existeix a la v2: BUGS-v1 #4, només queda trainingStatus.
     same(L.hrRestStatus(ctx), v1("hrRestStatus()"), "hrRestStatus");
     same(L.rpeTrend(ctx), v1("rpeTrend()"), "rpeTrend");
     const t1 = v1("trainingStatus()"), t2 = L.trainingStatus(ctx);

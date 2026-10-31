@@ -85,7 +85,7 @@ export function calcACWR({ acts, now }) {
 
 /** Monotonia i strain de Foster sobre 28 dies (v1: calcMonotony). */
 export function calcMonotony({ acts, now }) {
-  const r28 = acts.filter(a => daysAgo(a.date, now) <= 28);
+  const r28 = acts.filter(a => daysAgo(a.date, now) < 28); // BUGS-v1 #6: la v1 deixava entrar el dia 28 (29è dia)
   if (r28.length < 5) return null;
   const daily = {};
   for (let i = 0; i < 28; i++) { const d = new Date(now); d.setDate(d.getDate() - i); daily[dateStr(d)] = 0; }
@@ -125,20 +125,6 @@ export function estRecovery({ acts, now }) {
   const elapsed = Math.max(0, (now - startMs) / 3600000);
   const remaining = Math.max(0, Math.round(total - elapsed));
   return { total, elapsed: Math.round(elapsed), remaining, approx: !last.startTime, dayTrimp: Math.round(tr) };
-}
-
-/** Estat d'entrenament per tendència del CTL (v1: getStatus). Retorna una clau, no colors. */
-export function getStatus({ acts, now }, ff) {
-  if (ff.length < 14) return { key: "insuficient", s: "Insuficient", d: "Mínim 2 setmanes de dades" };
-  const l = ffNow(ff), p = ff[Math.max(0, ff.length - 29)], t = l.ctl - p.ctl;
-  const r7 = acts.filter(a => daysAgo(a.date, now) <= 7);
-  if (r7.length === 0 && l.atl < 5) return { key: "desentrenament", s: "Desentrenament", d: "Sense activitat recent" };
-  if (l.tsb > 15 && l.ctl > 20) return { key: "peaking", s: "Peaking", d: "Fresc i en forma!" };
-  if (l.tsb < -20) return { key: "sobrecarregat", s: "Sobrecarregat", d: "Fatiga alta. Descansa." };
-  if (t > 1) return { key: "productiu", s: "Productiu", d: "Fitness pujant!" };
-  if (Math.abs(t) <= 1 && l.ctl > 10) return { key: "manteniment", s: "Manteniment", d: "Fitness estable." };
-  if (t < -1) return { key: "recuperacio", s: "Recuperació", d: "Cos recuperant-se." };
-  return { key: "base", s: "Base", d: "Construint base." };
 }
 
 /** Mitjana de la FC en repòs: últims 7 registres contra els 33 anteriors (v1: hrRestStatus). */

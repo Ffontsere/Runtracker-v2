@@ -7,6 +7,7 @@ import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { makeDataset } from "./fixtures/make-dataset.mjs";
 import { todaySummary, bestWindow } from "../js/engine/today.js";
 import { trainingStatus } from "../js/engine/load.js";
+import { easyTrimp } from "../js/engine/easy.js";
 import { parseForecast, getForecast, forecastUrl } from "../js/data/weather.js";
 
 const NOW = new Date("2026-10-24T09:20:00").getTime(); // dissabte
@@ -101,6 +102,10 @@ test("pantalla amb dades: veredicte, setmana, millor hora i proteïna", async ()
   assert.match(root.textContent, /Aquesta setmana.*de 45 km/s);
   assert.match(root.querySelector(".best-time").textContent, /^(0[5-9]|10):00$/);
   assert.match(root.textContent, /113 g.*\(99–127 g\)/s);
+  const e = easyTrimp({ acts, settings: { ...settings, hrMax: 176, hrRest: 45 }, now: NOW });
+  const card = [...root.querySelectorAll("section.card")].find(c => /Sessió fàcil d.avui/.test(c.textContent));
+  assert.ok(card, "hi ha la targeta de sessió fàcil");
+  assert.match(card.textContent, e.hi <= 0 ? /Millor descansar/ : new RegExp(String(e.hi).replace(/(\d)(?=(\d{3})+$)/g, "$1.?")));
 });
 
 test("pantalla sense ubicació: botó per fer servir el GPS i després la millor hora", async () => {
